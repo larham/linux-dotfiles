@@ -214,6 +214,7 @@ Scripts run in lexicographic order by filename, before files are applied:
 
 1. `run_once_before_10-install-homebrew.sh.tmpl` — Installs Homebrew (macOS only; no-op on Linux)
 2. `run_once_before_20-install-packages.sh.tmpl` — Installs packages (`brew bundle` on macOS, `apt`/`pacman` on Linux)
+3. `run_once_after_30-disable-sleep.sh.tmpl` — Disables sleep, suspend, and lid switch; enables SSH (Linux only)
 
 `run_once_` scripts only execute once per machine (chezmoi tracks them by content hash). To force re-run, delete the entry from `~/.local/share/chezmoi/.chezmoistate.boltdb`.
 
@@ -249,6 +250,7 @@ No runtime OS detection happens in any shell config file.
 ├── dot_zprofile.tmpl                # → ~/.zprofile (Homebrew/OrbStack — macOS gated)
 ├── run_once_before_10-install-homebrew.sh.tmpl   # Installs Homebrew (macOS only)
 ├── run_once_before_20-install-packages.sh.tmpl   # Installs packages (cross-platform)
+├── run_once_after_30-disable-sleep.sh.tmpl       # Disables sleep & configures SSH (Linux only)
 ├── dot_config/
 │   ├── zsh/
 │   │   ├── dot_zshrc               # → ~/.config/zsh/.zshrc (sources all modules)

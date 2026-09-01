@@ -1,0 +1,26 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+set -e
+
+echo "Configuring Linux system to stay awake (disabling sleep & suspend)..."
+
+# Mask systemd sleep/suspend/hibernate targets
+if command -v systemctl >/dev/null 2>&1; then
+  sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+
+  # Configure logind to ignore lid switch (useful for laptops acting as servers)
+  sudo mkdir -p /etc/systemd/logind.conf.d
+  cat << 'EOF' | sudo tee /etc/systemd/logind.conf.d/ignore-lid.conf > /dev/null
+[Login]
+HandleLidSwitch=ignore
+HandleLidSwitchExternalPower=ignore
+EOF
+  sudo systemctl restart systemd-logind 2>/dev/null || true
+
+  # Ensure SSH daemon is enabled and running
+  sudo systemctl enable --now ssh 2>/dev/null || sudo systemctl enable --now sshd 2>/dev/null || true
+fi
+{{- else -}}
+#!/bin/sh
+# Not Linux — skipping sleep configuration
+{{- end -}}
