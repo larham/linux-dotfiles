@@ -22,3 +22,10 @@ dot_config/yazi/yazi.toml-*
 # git internals from submodules (e.g. superpowers/)
 **/dot_git/
 README.md
+
+# Age-encrypted secrets (ignored if age identity key is missing)
+{{- if not (stat (joinPath .chezmoi.homeDir ".config/chezmoi/key.txt")) }}
+dot_config/gh/encrypted_private_hosts.yml.age
+private_dot_ssh/encrypted_config.age
+{{- end }}
+

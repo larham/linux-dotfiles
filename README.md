@@ -320,7 +320,7 @@ Secrets are encrypted with [age](https://age-encryption.org) before being commit
 ### Key Details
 
 - **age key location**: `~/.config/chezmoi/key.txt` (never committed, `chmod 600`)
-- **Public recipient**: `age1kufmhsfggzs6c9qsf8h8p622c4rwjg4hmty9gfvanm6fp72s756q65exra`
+- **Public recipient**: `age16mv7ycglyrn68pnrfv6r2pf72swjffn20sdehfdha7l5sqlr3s2qa2mlsl`
 - **Key backup**: Stored in 1Password (Personal vault)
 
 ### Encrypted Files
@@ -625,7 +625,7 @@ encryption = "age"
 
 [age]
   identity = "~/.config/chezmoi/key.txt"
-  recipient = "age1kufmhsfggzs6c9qsf8h8p622c4rwjg4hmty9gfvanm6fp72s756q65exra"
+  recipient = "age16mv7ycglyrn68pnrfv6r2pf72swjffn20sdehfdha7l5sqlr3s2qa2mlsl"
 ```
 
 ### Packages Not Installing (macOS)
