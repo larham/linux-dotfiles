@@ -42,7 +42,7 @@ if [ "$ID" = "arch" ]; then
     curl wget rsync tree btop fastfetch chezmoi just sops
 
   # fnm
-  install_script_tool fnm "curl -fsSL https://fnm.vercel.app/install | bash"
+  install_script_tool fnm "curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir \$HOME/.local/bin"
 
 elif [ "$ID" = "debian" ] || [ "$ID" = "ubuntu" ]; then
   # --- Debian / Ubuntu ---
@@ -107,7 +107,7 @@ elif [ "$ID" = "debian" ] || [ "$ID" = "ubuntu" ]; then
   fi
 
   # fnm
-  install_script_tool fnm "curl -fsSL https://fnm.vercel.app/install | bash"
+  install_script_tool fnm "curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir \$HOME/.local/bin"
 
 else
   echo "Unsupported distro: $ID. Skipping package install."
