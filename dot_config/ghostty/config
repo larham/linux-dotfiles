@@ -9,6 +9,7 @@ unfocused-split-fill = 000000
 confirm-close-surface = false
 split-divider-color = ffffff
 window-save-state = always
+copy-on-select = true
 
 keybind = super+alt+up=new_split:up
 keybind = super+alt+down=new_split:down
