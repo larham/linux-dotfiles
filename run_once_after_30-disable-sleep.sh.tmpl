@@ -19,6 +19,13 @@ EOF
 
   # Ensure SSH daemon is enabled and running
   sudo systemctl enable --now ssh 2>/dev/null || sudo systemctl enable --now sshd 2>/dev/null || true
+
+  # Enable and start TLP for low-power CPU idle states (C-states)
+  if command -v tlp >/dev/null 2>&1; then
+    echo "Enabling TLP power management daemon..."
+    sudo systemctl enable --now tlp 2>/dev/null || true
+    sudo tlp start 2>/dev/null || true
+  fi
 fi
 {{- else -}}
 #!/bin/sh
