@@ -50,7 +50,12 @@ elif [ "$ID" = "debian" ] || [ "$ID" = "ubuntu" ]; then
   sudo apt-get install -y \
     zsh eza bat fd-find ripgrep \
     git neovim jq tmux age gnupg \
-    curl wget rsync tree btop
+    curl wget rsync tree btop \
+    python3 python3-pip python3-selenium python3-venv \
+    fail2ban gnome-tweaks silversearcher-ag \
+    wget xz-utils make direnv unzip \
+    chromium-chromedriver 
+
 
   # gh CLI — official apt repo
   if ! command -v gh >/dev/null 2>&1; then
