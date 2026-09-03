@@ -7,10 +7,32 @@ if [ -z "$DBUS_SESSION_BUS_ADDRESS" ] && [ -S "/run/user/$(id -u)/bus" ]; then
   export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
 fi
 
-# Configure GNOME XKB options to emulate macOS keymap (Left Command <-> Left Control for Cmd+C, Cmd+V, etc.)
+# 1. Unbind Super+V from GNOME message tray so Command+V never opens notifications
 if command -v gsettings >/dev/null 2>&1; then
-  echo "Configuring macOS-style key mapping in GNOME (Left Command <-> Left Control)..."
+  echo "Disabling GNOME Super+V notification popup..."
+  gsettings set org.gnome.shell.keybindings toggle-message-tray "[]" 2>/dev/null || true
+  dconf write /org/gnome/shell/keybindings/toggle-message-tray "[]" 2>/dev/null || true
+
+  echo "Configuring GNOME XKB options (Left Command <-> Left Control)..."
   gsettings set org.gnome.desktop.input-sources xkb-options "['ctrl:swap_lwin_lctrl']" 2>/dev/null || true
+  dconf write /org/gnome/desktop/input-sources/xkb-options "['ctrl:swap_lwin_lctrl']" 2>/dev/null || true
+fi
+
+# 2. Kernel-level key mapping via keyd (if installed, guarantees Cmd+C/Cmd+V across ALL apps & Wayland)
+if command -v keyd >/dev/null 2>&1; then
+  echo "Configuring keyd for macOS Command <-> Control mapping..."
+  sudo mkdir -p /etc/keyd
+  cat << 'EOF' | sudo tee /etc/keyd/default.conf > /dev/null
+[ids]
+*
+
+[main]
+# Map Left Command (Meta) to Control for Cmd+C, Cmd+V, etc.
+leftmeta = leftcontrol
+leftcontrol = leftmeta
+EOF
+  sudo systemctl enable --now keyd 2>/dev/null || true
+  sudo keyd reload 2>/dev/null || true
 fi
 {{- else -}}
 #!/bin/sh
