@@ -9,6 +9,7 @@ fi
 
 # Pin Ghostty & GNOME System Settings to GNOME Dock favorite apps if GNOME Shell is present
 if command -v gsettings >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+  echo "Updating GNOME dock favorite apps (Ghostty, Settings)..."
   python3 -c "
 import subprocess, os, ast
 
@@ -49,6 +50,7 @@ except Exception as e:
 " || true
 
   # Disable persistent update notifications from App Updates (snap-store), update-notifier, GNOME Software, and Firefox
+  echo "Disabling update notification popups for Firefox, Snap, and App Center..."
   gsettings set com.ubuntu.update-notifier no-show-notifications true 2>/dev/null || true
   dconf write /com/ubuntu/update-notifier/no-show-notifications true 2>/dev/null || true
 
