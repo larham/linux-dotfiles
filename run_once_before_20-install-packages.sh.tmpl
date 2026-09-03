@@ -68,6 +68,33 @@ elif [ "$ID" = "debian" ] || [ "$ID" = "ubuntu" ]; then
     sudo apt-get install -y gh
   fi
 
+  # Firefox — official Mozilla APT repo (native .deb instead of snap)
+  if [ ! -f /etc/apt/sources.list.d/mozilla.list ]; then
+    echo "Configuring official Mozilla APT repository for Firefox .deb..."
+    sudo install -d -m 0755 /etc/apt/keyrings
+    wget -q https://packages.mozilla.org/apt/repo-signing-key.gpg -O- | sudo tee /etc/apt/keyrings/packages.mozilla.org.asc > /dev/null
+    echo "deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.asc] https://packages.mozilla.org/apt mozilla main" \
+      | sudo tee /etc/apt/sources.list.d/mozilla.list > /dev/null
+
+    cat << 'EOF' | sudo tee /etc/apt/preferences.d/mozilla > /dev/null
+Package: *
+Pin: origin packages.mozilla.org
+Pin-Priority: 1000
+
+Package: firefox
+Pin: version 1:1snap*
+Pin-Priority: -1
+EOF
+
+    if command -v snap >/dev/null 2>&1 && snap list firefox >/dev/null 2>&1; then
+      echo "Removing Firefox snap..."
+      sudo snap remove --purge firefox || true
+    fi
+
+    sudo apt-get update -y
+    sudo apt-get install -y firefox
+  fi
+
   # fzf — install from GitHub to get a version that supports `fzf --zsh` (>= 0.48.0)
   if ! command -v fzf >/dev/null 2>&1; then
     FZF_VERSION=$(curl -s "https://api.github.com/repos/junegunn/fzf/releases/latest" | grep -Po '"tag_name": *"v\K[^"]*')
