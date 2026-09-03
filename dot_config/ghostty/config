@@ -13,8 +13,6 @@ copy-on-select = clipboard
 
 keybind = super+c=copy_to_clipboard
 keybind = super+v=paste_from_clipboard
-keybind = super+x=cut_to_clipboard
-keybind = super+a=select_all
 
 keybind = super+alt+up=new_split:up
 keybind = super+alt+down=new_split:down

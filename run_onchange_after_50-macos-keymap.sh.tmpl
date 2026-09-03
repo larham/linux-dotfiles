@@ -26,7 +26,19 @@ if command -v gsettings >/dev/null 2>&1; then
   dconf write /org/gnome/shell/keybindings/toggle-overview "['<Super>space', '<Control>space', '<Super>s']" 2>/dev/null || true
 fi
 
-# 2. Kernel-level key mapping via keyd (if installed, guarantees Cmd+C/Cmd+V across ALL apps & Wayland)
+# 2. Kernel-level key mapping via keyd (guarantees Cmd+C/Cmd+V across ALL apps & Wayland)
+if ! command -v keyd >/dev/null 2>&1; then
+  echo "Installing keyd for system-wide macOS key emulation..."
+  if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    if [ "$ID" = "debian" ] || [ "$ID" = "ubuntu" ]; then
+      sudo apt-get update -y && sudo apt-get install -y keyd || true
+    elif [ "$ID" = "arch" ]; then
+      sudo pacman -S --noconfirm keyd || true
+    fi
+  fi
+fi
+
 if command -v keyd >/dev/null 2>&1; then
   echo "Configuring keyd for macOS Command <-> Control mapping..."
   sudo mkdir -p /etc/keyd
