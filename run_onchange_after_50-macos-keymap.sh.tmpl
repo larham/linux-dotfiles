@@ -1,0 +1,18 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+set -e
+
+# Ensure D-Bus session bus address is set for gsettings/dconf
+if [ -z "$DBUS_SESSION_BUS_ADDRESS" ] && [ -S "/run/user/$(id -u)/bus" ]; then
+  export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
+fi
+
+# Configure GNOME XKB options to emulate macOS keymap (Left Command <-> Left Control for Cmd+C, Cmd+V, etc.)
+if command -v gsettings >/dev/null 2>&1; then
+  echo "Configuring macOS-style key mapping in GNOME (Left Command <-> Left Control)..."
+  gsettings set org.gnome.desktop.input-sources xkb-options "['ctrl:swap_lwin_lctrl']" 2>/dev/null || true
+fi
+{{- else -}}
+#!/bin/sh
+# Not Linux — skipping keyboard mapping configuration
+{{- end -}}
