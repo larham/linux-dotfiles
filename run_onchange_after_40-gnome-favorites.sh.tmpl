@@ -7,9 +7,9 @@ if [ -z "$DBUS_SESSION_BUS_ADDRESS" ] && [ -S "/run/user/$(id -u)/bus" ]; then
   export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
 fi
 
-# Pin Ghostty & GNOME System Settings to GNOME Dock favorite apps if GNOME Shell is present
+# Pin Ghostty, Firefox & GNOME System Settings to GNOME Dock favorite apps if GNOME Shell is present
 if command -v gsettings >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
-  echo "Updating GNOME dock favorite apps (Ghostty, Settings)..."
+  echo "Updating GNOME dock favorite apps (Ghostty, Firefox, Settings)..."
   python3 -c "
 import subprocess, os, ast
 
@@ -33,6 +33,15 @@ try:
 
         # Ghostty
         if pin_app(favs, ['com.mitchellh.ghostty.desktop', 'ghostty.desktop']):
+            modified = True
+
+        # Clean up stale snap firefox entry if present
+        if 'firefox_firefox.desktop' in favs:
+            favs = [item for item in favs if item != 'firefox_firefox.desktop']
+            modified = True
+
+        # Firefox
+        if pin_app(favs, ['firefox.desktop']):
             modified = True
 
         # GNOME System Settings

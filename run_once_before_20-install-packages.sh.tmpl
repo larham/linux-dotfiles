@@ -93,6 +93,30 @@ EOF
 
     sudo apt-get update -y
     sudo apt-get install -y firefox
+
+    # Configure Firefox clean home, restore tabs, blank new tab
+    sudo mkdir -p /etc/firefox/policies
+    cat << 'EOF' | sudo tee /etc/firefox/policies/policies.json > /dev/null
+{
+  "policies": {
+    "Homepage": {
+      "URL": "about:blank",
+      "StartPage": "previous-session"
+    },
+    "NewTabPage": false,
+    "FirefoxHome": {
+      "Search": false,
+      "TopSites": false,
+      "SponsoredTopSites": false,
+      "Highlights": false,
+      "Pocket": false,
+      "SponsoredPocket": false,
+      "Snippets": false,
+      "Locked": false
+    }
+  }
+}
+EOF
   fi
 
   # fzf — install from GitHub to get a version that supports `fzf --zsh` (>= 0.48.0)
