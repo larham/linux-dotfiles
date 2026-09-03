@@ -47,6 +47,12 @@ try:
 except Exception as e:
     print(f'Note: GNOME favorites update skipped ({e})')
 " || true
+
+  # Disable persistent update notifications from Firefox and Snap in GNOME
+  for app in firefox firefox_firefox io-snapcraft-snapd snapd; do
+    gsettings set "org.gnome.desktop.notifications.application:/org/gnome/desktop/notifications/application/$app/" enable false 2>/dev/null || true
+    gsettings set "org.gnome.desktop.notifications.application:/org/gnome/desktop/notifications/application/$app/" show-banners false 2>/dev/null || true
+  done
 fi
 {{- else -}}
 #!/bin/sh
