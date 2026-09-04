@@ -1,0 +1,86 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+set -e
+
+if [ -f /etc/os-release ]; then
+  . /etc/os-release
+  if [ "$ID" = "debian" ] || [ "$ID" = "ubuntu" ]; then
+    if [ ! -f /etc/apt/sources.list.d/mozilla.list ] || (command -v snap >/dev/null 2>&1 && snap list firefox >/dev/null 2>&1); then
+      echo "Transitioning Firefox from Snap to native Mozilla APT repository (.deb)..."
+      sudo install -d -m 0755 /etc/apt/keyrings
+      wget -q https://packages.mozilla.org/apt/repo-signing-key.gpg -O- | sudo tee /etc/apt/keyrings/packages.mozilla.org.asc > /dev/null
+      echo "deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.asc] https://packages.mozilla.org/apt mozilla main" \
+        | sudo tee /etc/apt/sources.list.d/mozilla.list > /dev/null
+
+      cat << 'EOF' | sudo tee /etc/apt/preferences.d/mozilla > /dev/null
+Package: *
+Pin: origin packages.mozilla.org
+Pin-Priority: 1000
+
+Package: firefox
+Pin: version 1:1snap*
+Pin-Priority: -1
+EOF
+
+      if command -v snap >/dev/null 2>&1 && snap list firefox >/dev/null 2>&1; then
+        echo "Removing Firefox snap..."
+        sudo snap remove --purge firefox || true
+      fi
+
+      sudo apt-get update -y
+      sudo apt-get install -y firefox
+      echo "Firefox (.deb) successfully installed from official Mozilla repository."
+    fi
+
+    # Configure Firefox:
+    # 1. Restore previous session/tabs on startup
+    # 2. Blank page for new windows and new tabs
+    # 3. Disable news, stories, Pocket, and recommended/sponsored links
+    echo "Configuring Firefox: restore previous tabs, blank new tabs/windows, no news/sponsored links..."
+    sudo mkdir -p /etc/firefox/policies
+    cat << 'EOF' | sudo tee /etc/firefox/policies/policies.json > /dev/null
+{
+  "policies": {
+    "Homepage": {
+      "URL": "about:blank",
+      "StartPage": "previous-session"
+    },
+    "NewTabPage": false,
+    "FirefoxHome": {
+      "Search": false,
+      "TopSites": false,
+      "SponsoredTopSites": false,
+      "Highlights": false,
+      "Pocket": false,
+      "SponsoredPocket": false,
+      "Snippets": false,
+      "Locked": false
+    }
+  }
+}
+EOF
+
+    # Also apply directly to user profiles in ~/.mozilla/firefox if they exist
+    if [ -d "$HOME/.mozilla/firefox" ]; then
+      for profile in "$HOME/.mozilla/firefox/"*.*; do
+        if [ -d "$profile" ]; then
+          cat << 'EOF' >> "$profile/user.js"
+user_pref("browser.startup.page", 3);
+user_pref("browser.startup.homepage", "about:blank");
+user_pref("browser.newtabpage.enabled", false);
+user_pref("browser.newtabpage.activity-stream.feeds.section.topstories", false);
+user_pref("browser.newtabpage.activity-stream.section.highlights.includePocket", false);
+user_pref("browser.newtabpage.activity-stream.showSponsored", false);
+user_pref("browser.newtabpage.activity-stream.showSponsoredTopSites", false);
+user_pref("browser.newtabpage.activity-stream.feeds.topsites", false);
+user_pref("browser.newtabpage.activity-stream.feeds.snippets", false);
+EOF
+        fi
+      done
+    fi
+  fi
+fi
+{{- else -}}
+#!/bin/sh
+# Not Linux — skipping Firefox apt setup
+{{- end -}}

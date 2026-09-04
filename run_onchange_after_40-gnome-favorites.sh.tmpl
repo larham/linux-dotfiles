@@ -74,8 +74,22 @@ except Exception as e:
     dconf write "/org/gnome/desktop/notifications/application/$app/enable" false 2>/dev/null || true
     dconf write "/org/gnome/desktop/notifications/application/$app/show-banners" false 2>/dev/null || true
   done
+
+  # Configure plugged-in screen timeout to 20 minutes (1200 seconds)
+  echo "Setting screen blank timeout to 20 minutes (1200s)..."
+  gsettings set org.gnome.desktop.session idle-delay 1200 2>/dev/null || true
+  dconf write /org/gnome/desktop/session/idle-delay "uint32 1200" 2>/dev/null || true
+
+  # Ensure machine does not suspend on AC power (screen turns off, system stays awake)
+  gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 2>/dev/null || true
+  gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing' 2>/dev/null || true
+  dconf write /org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-timeout 0 2>/dev/null || true
+  dconf write /org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-type "'nothing'" 2>/dev/null || true
 fi
 {{- else -}}
 #!/bin/sh
-# Not Linux — skipping GNOME favorites configuration
+# macOS — set display sleep to 20 minutes on AC power
+if command -v pmset >/dev/null 2>&1; then
+  sudo pmset -c displaysleep 20 2>/dev/null || pmset -c displaysleep 20 2>/dev/null || true
+fi
 {{- end -}}
