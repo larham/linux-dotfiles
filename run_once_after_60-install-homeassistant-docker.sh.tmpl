@@ -1,0 +1,86 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+set -e
+
+HA_DIR="$HOME/home-assistant"
+
+echo "Configuring Home Assistant via Docker Compose..."
+
+# 1. Install Docker & Compose V2 plugin if not present
+if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+  echo "Installing Docker Engine and Docker Compose plugin..."
+  if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    if [ "$ID" = "debian" ] || [ "$ID" = "ubuntu" ]; then
+      sudo apt-get update -y
+      sudo apt-get install -y ca-certificates curl gnupg
+
+      sudo install -m 0755 -d /etc/apt/keyrings
+      if [ ! -f /etc/apt/keyrings/docker.gpg ]; then
+        curl -fsSL "https://download.docker.com/linux/$ID/gpg" | sudo gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg
+        sudo chmod a+r /etc/apt/keyrings/docker.gpg
+      fi
+
+      # Determine codename (fallback to noble for upcoming/unsupported Ubuntu releases)
+      TARGET_CODENAME="${VERSION_CODENAME:-$UBUNTU_CODENAME}"
+      if [ "$ID" = "ubuntu" ] && [ "$TARGET_CODENAME" != "noble" ] && [ "$TARGET_CODENAME" != "jammy" ] && [ "$TARGET_CODENAME" != "focal" ]; then
+        TARGET_CODENAME="noble"
+      fi
+
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$ID $TARGET_CODENAME stable" \
+        | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+      sudo apt-get update -y
+      sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+      # Add current user to docker group
+      sudo usermod -aG docker "$USER" 2>/dev/null || true
+      sudo systemctl enable --now docker 2>/dev/null || true
+    elif [ "$ID" = "arch" ]; then
+      sudo pacman -Syu --noconfirm --needed docker docker-compose
+      sudo usermod -aG docker "$USER" 2>/dev/null || true
+      sudo systemctl enable --now docker 2>/dev/null || true
+    fi
+  fi
+fi
+
+# 2. Create Home Assistant directory structure
+mkdir -p "$HA_DIR/config"
+
+# 3. Create docker-compose specification
+cat << 'EOF' > "$HA_DIR/compose.yaml"
+services:
+  homeassistant:
+    container_name: homeassistant
+    image: ghcr.io/home-assistant/home-assistant:stable
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    stop_grace_period: 60s
+    volumes:
+      - ./config:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
+EOF
+
+# 4. Configure firewall (if UFW active)
+if command -v ufw >/dev/null 2>&1 && sudo ufw status 2>/dev/null | grep -q "Status: active"; then
+  echo "Opening port 8123 in UFW for Home Assistant..."
+  sudo ufw allow 8123/tcp comment 'Home Assistant' 2>/dev/null || true
+fi
+
+# 5. Start Home Assistant container
+echo "Starting Home Assistant container..."
+DOCKER_CMD="docker compose"
+if ! docker ps >/dev/null 2>&1; then
+  DOCKER_CMD="sudo docker compose"
+fi
+
+$DOCKER_CMD -f "$HA_DIR/compose.yaml" up -d
+
+echo "Home Assistant successfully deployed in $HA_DIR!"
+echo "Access the web UI at http://localhost:8123 or http://$(hostname -I 2>/dev/null | awk '{print $1}'):8123"
+{{- else -}}
+#!/bin/sh
+# Not Linux — skipping Home Assistant Docker installation
+{{- end -}}

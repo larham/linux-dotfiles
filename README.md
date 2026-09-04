@@ -219,6 +219,7 @@ Scripts run in lexicographic order by filename, before files are applied:
 5. `run_once_after_30-disable-sleep.sh.tmpl` — Disables sleep, suspend, and lid switch; enables SSH (Linux only)
 6. `run_onchange_after_40-gnome-favorites.sh.tmpl` — Pins Ghostty, Firefox, and GNOME System Settings to GNOME dock (Linux only)
 7. `run_onchange_after_50-macos-keymap.sh.tmpl` — Maps Left Command key to Control in GNOME for macOS-style Cmd+C / Cmd+V shortcuts (Linux only)
+8. `run_once_after_60-install-homeassistant-docker.sh.tmpl` — Installs Docker and deploys Home Assistant Container via Docker Compose in `~/home-assistant/` (Linux only)
 
 `run_once_` scripts only execute once per machine (chezmoi tracks them by content hash). To force re-run, delete the entry from `~/.local/share/chezmoi/.chezmoistate.boltdb`.
 
@@ -259,6 +260,7 @@ No runtime OS detection happens in any shell config file.
 ├── run_once_after_30-disable-sleep.sh.tmpl       # Disables sleep & configures SSH (Linux only)
 ├── run_onchange_after_40-gnome-favorites.sh.tmpl # Pins Ghostty, Firefox & Settings to GNOME dock (Linux only)
 ├── run_onchange_after_50-macos-keymap.sh.tmpl   # Maps Left Command key to Control for macOS Cmd+C/Cmd+V (Linux only)
+├── run_once_after_60-install-homeassistant-docker.sh.tmpl # Deploys Home Assistant via Docker Compose in ~/home-assistant/ (Linux only)
 ├── dot_config/
 │   ├── zsh/
 │   │   ├── dot_zshrc               # → ~/.config/zsh/.zshrc (sources all modules)
