@@ -85,6 +85,14 @@ except Exception as e:
   gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing' 2>/dev/null || true
   dconf write /org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-timeout 0 2>/dev/null || true
   dconf write /org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-type "'nothing'" 2>/dev/null || true
+
+  # Ensure UFW allows Home Assistant (8123) and SSH (22)
+  if command -v ufw >/dev/null 2>&1; then
+    echo "Configuring firewall (UFW) for Home Assistant (8123) and SSH (22)..."
+    sudo ufw allow 8123/tcp comment 'Home Assistant' 2>/dev/null || true
+    sudo ufw allow 22/tcp comment 'SSH' 2>/dev/null || true
+    sudo ufw reload 2>/dev/null || true
+  fi
 fi
 {{- else -}}
 #!/bin/sh

@@ -63,10 +63,12 @@ services:
       - /run/dbus:/run/dbus:ro
 EOF
 
-# 4. Configure firewall (if UFW active)
-if command -v ufw >/dev/null 2>&1 && sudo ufw status 2>/dev/null | grep -q "Status: active"; then
-  echo "Opening port 8123 in UFW for Home Assistant..."
+# 4. Configure firewall (UFW)
+if command -v ufw >/dev/null 2>&1; then
+  echo "Opening ports 8123 (Home Assistant) and 22 (SSH) in UFW..."
   sudo ufw allow 8123/tcp comment 'Home Assistant' 2>/dev/null || true
+  sudo ufw allow 22/tcp comment 'SSH' 2>/dev/null || true
+  sudo ufw reload 2>/dev/null || true
 fi
 
 # 5. Start Home Assistant container
