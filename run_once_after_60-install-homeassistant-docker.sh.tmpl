@@ -80,24 +80,36 @@ $DOCKER_CMD -f "$HA_DIR/compose.yaml" up -d
 
 # 6. Install HACS (Home Assistant Community Store)
 HACS_DIR="$HA_DIR/config/custom_components/hacs"
-if [ ! -d "$HACS_DIR" ]; then
+if [ ! -f "$HACS_DIR/manifest.json" ]; then
   echo "Installing HACS (Home Assistant Community Store)..."
   mkdir -p "$HACS_DIR"
-  if $DOCKER_CMD -f "$HA_DIR/compose.yaml" exec -T homeassistant wget -q -O - https://get.hacs.xyz 2>/dev/null | $DOCKER_CMD -f "$HA_DIR/compose.yaml" exec -T homeassistant bash 2>/dev/null; then
-    echo "HACS installed via official container installer."
-  else
-    # Fallback to direct download of release zip
-    HACS_URL=$(curl -s https://api.github.com/repos/hacs/integration/releases/latest | grep "browser_download_url.*hacs.zip" | cut -d : -f 2,3 | tr -d \")
-    if [ -n "$HACS_URL" ]; then
-      curl -fsSL "$HACS_URL" -o /tmp/hacs.zip
-      unzip -q -o /tmp/hacs.zip -d "$HACS_DIR"
-      rm -f /tmp/hacs.zip
-    fi
-  fi
 
-  echo "Restarting Home Assistant container to load HACS..."
-  $DOCKER_CMD -f "$HA_DIR/compose.yaml" restart
-  echo "HACS files installed successfully."
+  # Ensure unzip is available
+  command -v unzip >/dev/null 2>&1 || sudo apt-get install -y unzip 2>/dev/null || true
+
+  # Download hacs.zip directly on host with timeouts so it never stalls
+  TEMP_ZIP="/tmp/hacs.zip"
+  rm -f "$TEMP_ZIP"
+
+  echo "Downloading latest HACS release from GitHub..."
+  curl -fsSL --connect-timeout 10 --max-time 30 \
+    "https://github.com/hacs/integration/releases/latest/download/hacs.zip" \
+    -o "$TEMP_ZIP" 2>/dev/null || \
+  wget -q --timeout=30 \
+    "https://github.com/hacs/integration/releases/latest/download/hacs.zip" \
+    -O "$TEMP_ZIP" 2>/dev/null || true
+
+  if [ -s "$TEMP_ZIP" ]; then
+    unzip -q -o "$TEMP_ZIP" -d "$HACS_DIR"
+    rm -f "$TEMP_ZIP"
+    echo "HACS files successfully unpacked to $HACS_DIR."
+
+    echo "Restarting Home Assistant container to register HACS..."
+    $DOCKER_CMD -f "$HA_DIR/compose.yaml" restart
+    echo "Home Assistant restarted."
+  else
+    echo "Warning: Could not download HACS zip. You can install it manually later."
+  fi
 fi
 
 echo "Home Assistant successfully deployed in $HA_DIR!"
