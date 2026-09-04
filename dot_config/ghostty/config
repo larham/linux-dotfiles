@@ -13,6 +13,8 @@ copy-on-select = clipboard
 
 keybind = super+c=copy_to_clipboard
 keybind = super+v=paste_from_clipboard
+keybind = super+t=new_tab
+keybind = super+w=close_surface
 
 keybind = super+alt+up=new_split:up
 keybind = super+alt+down=new_split:down
