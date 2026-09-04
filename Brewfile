@@ -3,6 +3,7 @@ brew "zsh"
 brew "starship"
 brew "thefuck"
 brew "zoxide"
+brew "direnv"
 
 # Shell history
 brew "fzf"
