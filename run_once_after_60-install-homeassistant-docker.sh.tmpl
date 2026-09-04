@@ -78,8 +78,31 @@ fi
 
 $DOCKER_CMD -f "$HA_DIR/compose.yaml" up -d
 
+# 6. Install HACS (Home Assistant Community Store)
+HACS_DIR="$HA_DIR/config/custom_components/hacs"
+if [ ! -d "$HACS_DIR" ]; then
+  echo "Installing HACS (Home Assistant Community Store)..."
+  mkdir -p "$HACS_DIR"
+  if $DOCKER_CMD -f "$HA_DIR/compose.yaml" exec -T homeassistant wget -q -O - https://get.hacs.xyz 2>/dev/null | $DOCKER_CMD -f "$HA_DIR/compose.yaml" exec -T homeassistant bash 2>/dev/null; then
+    echo "HACS installed via official container installer."
+  else
+    # Fallback to direct download of release zip
+    HACS_URL=$(curl -s https://api.github.com/repos/hacs/integration/releases/latest | grep "browser_download_url.*hacs.zip" | cut -d : -f 2,3 | tr -d \")
+    if [ -n "$HACS_URL" ]; then
+      curl -fsSL "$HACS_URL" -o /tmp/hacs.zip
+      unzip -q -o /tmp/hacs.zip -d "$HACS_DIR"
+      rm -f /tmp/hacs.zip
+    fi
+  fi
+
+  echo "Restarting Home Assistant container to load HACS..."
+  $DOCKER_CMD -f "$HA_DIR/compose.yaml" restart
+  echo "HACS files installed successfully."
+fi
+
 echo "Home Assistant successfully deployed in $HA_DIR!"
 echo "Access the web UI at http://localhost:8123 or http://$(hostname -I 2>/dev/null | awk '{print $1}'):8123"
+echo "To activate HACS: Go to Settings > Devices & Services > Add Integration and search for 'HACS'."
 {{- else -}}
 #!/bin/sh
 # Not Linux — skipping Home Assistant Docker installation
