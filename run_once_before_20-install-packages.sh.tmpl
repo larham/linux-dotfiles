@@ -119,6 +119,18 @@ EOF
 EOF
   fi
 
+  # Google Chrome — official Google APT repo
+  if ! command -v google-chrome-stable >/dev/null 2>&1 && ! command -v google-chrome >/dev/null 2>&1; then
+    echo "Configuring official Google Chrome APT repository..."
+    sudo install -d -m 0755 /etc/apt/keyrings
+    curl -fsSL https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor --yes -o /etc/apt/keyrings/google-chrome.gpg
+    sudo chmod a+r /etc/apt/keyrings/google-chrome.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/google-chrome.gpg] https://dl.google.com/linux/chrome/deb/ stable main" \
+      | sudo tee /etc/apt/sources.list.d/google-chrome.list > /dev/null
+    sudo apt-get update -y
+    sudo apt-get install -y google-chrome-stable
+  fi
+
   # fzf — install from GitHub to get a version that supports `fzf --zsh` (>= 0.48.0)
   if ! command -v fzf >/dev/null 2>&1; then
     FZF_VERSION=$(curl -s "https://api.github.com/repos/junegunn/fzf/releases/latest" | grep -Po '"tag_name": *"v\K[^"]*')
