@@ -33,15 +33,25 @@ if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>
       sudo apt-get update -y
       sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-      # Add current user to docker group
-      sudo usermod -aG docker "$USER" 2>/dev/null || true
+      # Add current user to docker, dialout, and tty groups
+      sudo usermod -aG docker,dialout,tty "$USER" 2>/dev/null || true
       sudo systemctl enable --now docker 2>/dev/null || true
     elif [ "$ID" = "arch" ]; then
       sudo pacman -Syu --noconfirm --needed docker docker-compose
-      sudo usermod -aG docker "$USER" 2>/dev/null || true
+      sudo usermod -aG docker,dialout,tty "$USER" 2>/dev/null || true
       sudo systemctl enable --now docker 2>/dev/null || true
     fi
   fi
+fi
+
+# Ensure user is in dialout and tty groups for USB serial / Zigbee adapters
+sudo usermod -aG dialout,tty "$USER" 2>/dev/null || true
+
+# Disable ModemManager if present (prevents it from locking serial ports on Zigbee dongles)
+if systemctl is-active --quiet ModemManager 2>/dev/null; then
+  echo "Disabling ModemManager to prevent serial port locking..."
+  sudo systemctl stop ModemManager 2>/dev/null || true
+  sudo systemctl disable ModemManager 2>/dev/null || true
 fi
 
 # 2. Create Home Assistant directory structure
@@ -61,6 +71,8 @@ services:
       - ./config:/config
       - /etc/localtime:/etc/localtime:ro
       - /run/dbus:/run/dbus:ro
+      - /run/udev:/run/udev:ro
+      - /dev:/dev
 EOF
 
 # 4. Configure firewall (UFW)
@@ -117,6 +129,7 @@ fi
 echo "Home Assistant successfully deployed in $HA_DIR!"
 echo "Access the web UI at http://localhost:8123 or http://$(hostname -I 2>/dev/null | awk '{print $1}'):8123"
 echo "To activate HACS: Go to Settings > Devices & Services > Add Integration and search for 'HACS'."
+echo "To set up Zigbee: Plug in your Sonoff/SkyConnect USB dongle, then go to Settings > Devices & Services > Add Integration > Zigbee Home Automation (ZHA)."
 {{- else -}}
 #!/bin/sh
 # Not Linux — skipping Home Assistant Docker installation

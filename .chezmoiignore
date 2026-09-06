@@ -29,3 +29,10 @@ dot_config/gh/encrypted_private_hosts.yml.age
 private_dot_ssh/encrypted_config.age
 {{- end }}
 
+# Home Assistant (Linux only)
+{{- if ne .chezmoi.os "linux" }}
+home-assistant
+home-assistant/**
+{{- end }}
+
+
