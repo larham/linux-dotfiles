@@ -54,28 +54,7 @@ if systemctl is-active --quiet ModemManager 2>/dev/null; then
   sudo systemctl disable ModemManager 2>/dev/null || true
 fi
 
-# 2. Create Home Assistant directory structure
-mkdir -p "$HA_DIR/config"
-
-# 3. Create docker-compose specification
-cat << 'EOF' > "$HA_DIR/compose.yaml"
-services:
-  homeassistant:
-    container_name: homeassistant
-    image: ghcr.io/home-assistant/home-assistant:stable
-    restart: unless-stopped
-    privileged: true
-    network_mode: host
-    stop_grace_period: 60s
-    volumes:
-      - ./config:/config
-      - /etc/localtime:/etc/localtime:ro
-      - /run/dbus:/run/dbus:ro
-      - /run/udev:/run/udev:ro
-      - /dev:/dev
-EOF
-
-# 4. Configure firewall (UFW)
+# 2. Configure firewall (UFW)
 if command -v ufw >/dev/null 2>&1; then
   echo "Opening ports 8123 (Home Assistant) and 22 (SSH) in UFW..."
   sudo ufw allow 8123/tcp comment 'Home Assistant' 2>/dev/null || true
@@ -83,7 +62,7 @@ if command -v ufw >/dev/null 2>&1; then
   sudo ufw reload 2>/dev/null || true
 fi
 
-# 5. Start Home Assistant container
+# 3. Start Home Assistant container
 echo "Starting Home Assistant container..."
 DOCKER_CMD="docker compose"
 if ! docker ps >/dev/null 2>&1; then
@@ -92,7 +71,7 @@ fi
 
 $DOCKER_CMD -f "$HA_DIR/compose.yaml" up -d
 
-# 6. Install HACS (Home Assistant Community Store)
+# 4. Install HACS (Home Assistant Community Store)
 HACS_DIR="$HA_DIR/config/custom_components/hacs"
 if [ ! -f "$HACS_DIR/manifest.json" ]; then
   echo "Installing HACS (Home Assistant Community Store)..."

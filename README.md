@@ -219,7 +219,7 @@ Scripts run in lexicographic order by filename, before files are applied:
 5. `run_once_after_30-disable-sleep.sh.tmpl` — Disables sleep, suspend, and lid switch; enables SSH (Linux only)
 6. `run_onchange_after_40-gnome-favorites.sh.tmpl` — Pins Ghostty, Firefox, and GNOME System Settings to GNOME dock (Linux only)
 7. `run_onchange_after_50-macos-keymap.sh.tmpl` — Maps Left Command key to Control in GNOME for macOS-style Cmd+C / Cmd+V shortcuts (Linux only)
-8. `run_once_after_60-install-homeassistant-docker.sh.tmpl` — Installs Docker and deploys Home Assistant Container via Docker Compose in `~/home-assistant/` (Linux only)
+8. `run_once_after_60-install-homeassistant-docker.sh.tmpl` — Installs Docker and deploys Home Assistant Container via Docker Compose in `~/home-assistant/` with HACS and USB Zigbee dongle pass-through (Linux only)
 
 `run_once_` scripts only execute once per machine (chezmoi tracks them by content hash). To force re-run, delete the entry from `~/.local/share/chezmoi/.chezmoistate.boltdb`.
 
@@ -260,7 +260,7 @@ No runtime OS detection happens in any shell config file.
 ├── run_once_after_30-disable-sleep.sh.tmpl       # Disables sleep & configures SSH (Linux only)
 ├── run_onchange_after_40-gnome-favorites.sh.tmpl # Pins Ghostty, Firefox & Settings to GNOME dock (Linux only)
 ├── run_onchange_after_50-macos-keymap.sh.tmpl   # Maps Left Command key to Control for macOS Cmd+C/Cmd+V (Linux only)
-├── run_once_after_60-install-homeassistant-docker.sh.tmpl # Deploys Home Assistant via Docker Compose in ~/home-assistant/ (Linux only)
+├── run_once_after_60-install-homeassistant-docker.sh.tmpl # Deploys Home Assistant via Docker Compose in ~/home-assistant/ with Zigbee USB pass-through (Linux only)
 ├── dot_config/
 │   ├── zsh/
 │   │   ├── dot_zshrc               # → ~/.config/zsh/.zshrc (sources all modules)
@@ -733,6 +733,17 @@ chsh -s /usr/bin/zsh
 
 # Log out and back in for the change to apply
 ```
+
+### Home Assistant & Zigbee Coordinator USB Pass-Through (Linux)
+
+Home Assistant runs in Docker at `~/home-assistant/` (`compose.yaml`). It is configured with `privileged: true`, host networking, and mounts `/dev:/dev` and `/run/udev:/run/udev:ro`. This enables hotplugging and pass-through of USB serial dongles (such as Sonoff Zigbee 3.0 USB Dongle Plus or Home Assistant SkyConnect) without Docker failing to start if the dongle is unplugged.
+
+**Connecting a Zigbee Coordinator:**
+1. Plug your USB dongle into the Linux host (using a USB 2.0 extension cable is recommended to avoid 2.4 GHz USB 3.0 interference).
+2. The user is added to `dialout` and `tty` groups automatically, and `ModemManager` is disabled to prevent serial port lockouts.
+3. Open Home Assistant at `http://<ubuntu-ip>:8123`.
+4. Go to **Settings** → **Devices & Services** → **Add Integration** → search for **Zigbee Home Automation (ZHA)**.
+5. Home Assistant will detect the serial port (e.g. `/dev/serial/by-id/usb-ITead_Sonoff_Zigbee_3.0_USB_Dongle_Plus...`). Follow the wizard to complete network initialization.
 
 ---
 
