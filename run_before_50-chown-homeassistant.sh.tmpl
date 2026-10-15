@@ -1,0 +1,15 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+set -eu
+
+HA_CONFIG="$HOME/home-assistant/config"
+
+# Only run if ~/home-assistant/config exists and contains root-owned files
+if [ -d "$HA_CONFIG" ] && find "$HA_CONFIG" -maxdepth 3 -user root -print -quit 2>/dev/null | grep -q .; then
+  echo "Home Assistant files owned by root detected; fixing permissions for $USER..."
+  sudo chown -R "$USER:$USER" "$HA_CONFIG"
+fi
+{{- else -}}
+#!/bin/sh
+# Not Linux — skipping Home Assistant chown
+{{- end -}}
