@@ -879,6 +879,29 @@ chsh -s /usr/bin/zsh
 # Log out and back in for the change to apply
 ```
 
+### Ghostty Two-Finger Scroll Shows Command History Instead of Scrolling Output
+
+**Symptoms:** Using a two-finger touchpad scroll up/down at the shell prompt cycles through previous Zsh commands (as if pressing the `Up`/`Down` arrow keys) instead of scrolling the terminal's output buffer.
+
+**Cause:** A full-screen/TUI program (`btop`, `lazygit`, `yazi`, `nvim`, `less`, `opencode`, or an interrupted `ssh` session) exited without restoring the primary terminal screen, leaving Ghostty stuck in the **alternate screen buffer** (`?1049h`) with **Alternate Scroll Mode** (`?1007h`) active. In that mode, Ghostty translates touchpad scroll events into `Up`/`Down` arrow key presses.
+
+**How to manually fix it:**
+
+Run any one of the following commands in the affected terminal tab:
+
+```bash
+# Option 1: Exit the alternate screen without clearing your terminal (recommended)
+tput rmcup
+
+# Option 2: Explicitly exit alternate screen (?1049l) and disable alternate scroll (?1007l)
+printf '\e[?1049l\e[?1007l'
+
+# Option 3: Full terminal reset (also clears the screen)
+reset
+```
+
+> **Tip:** If you are actively inside a full-screen TUI app (like `less` or `btop`) and want to scroll Ghostty's outer scrollback buffer without exiting the app, hold **`Shift`** while two-finger scrolling.
+
 ---
 
 ## License
