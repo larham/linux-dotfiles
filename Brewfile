@@ -65,7 +65,7 @@ brew "mas"
 brew "opencode"
 
 # Apps (casks)
-cask "ghostty"
+cask "kitty"
 cask "orbstack"
 cask "1password"
 cask "1password-cli"

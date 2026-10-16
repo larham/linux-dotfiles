@@ -39,7 +39,7 @@ if [ "$ID" = "arch" ]; then
   sudo pacman -S --noconfirm --needed \
     zsh starship eza bat fzf fd ripgrep zoxide direnv \
     git neovim lazygit github-cli jq tmux age gnupg \
-    curl wget rsync tree btop fastfetch chezmoi just sops tlp ghostty keyd
+    curl wget rsync tree btop fastfetch chezmoi just sops tlp kitty keyd
 
   # fnm
   install_script_tool fnm "curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir \$HOME/.local/bin"
@@ -50,7 +50,7 @@ elif [ "$ID" = "debian" ] || [ "$ID" = "ubuntu" ]; then
   sudo apt-get install -y \
     zsh eza bat fd-find ripgrep \
     git neovim jq tmux age gnupg \
-    curl wget rsync tree btop \
+    curl wget rsync tree btop kitty \
     python3 python3-pip python3-selenium python3-venv \
     fail2ban gnome-tweaks silversearcher-ag tlp keyd \
     wget xz-utils make direnv unzip openssh-server \
@@ -171,9 +171,6 @@ EOF
 
   # fnm
   install_script_tool fnm "curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir \$HOME/.local/bin"
-
-  # ghostty
-  install_script_tool ghostty "sudo add-apt-repository -y ppa:mkick/ghostty && sudo apt-get update -y && sudo apt-get install -y ghostty"
 
 else
   echo "Unsupported distro: $ID. Skipping package install."

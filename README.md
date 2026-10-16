@@ -37,7 +37,7 @@ Works on **macOS** (primary) and **Linux** (Debian/Ubuntu and Arch). All OS-spec
 - **Templated configs** — shell files and git config adapt based on OS, user identity, GPG key, and whether OrbStack is installed
 - **Optional GPG commit signing** — prompted during init; signs commits automatically when a key ID is provided
 - **Auto-installs packages** — Homebrew + `Brewfile` on macOS; `apt`/`pacman` + official repos on Linux
-- **Linux desktop & server polish** — macOS-style `Cmd` keybindings (`keyd` + GNOME), native Firefox `.deb` & Google Chrome, Ghostty terminal, sleep/lid-switch disabled for always-on server use
+- **Linux desktop & server polish** — macOS-style `Cmd` keybindings (`keyd` + GNOME), native Firefox `.deb` & Google Chrome, Kitty terminal, sleep/lid-switch disabled for always-on server use
 - **Home Assistant on Docker (Linux)** — automatically installs Docker Engine + Compose V2, deploys Home Assistant with HACS and USB Zigbee pass-through in `~/home-assistant/`
 - **Zsh on all platforms** — installed and set as default shell on Linux automatically
 - **Conventional commit template** enforced globally for all git repos
@@ -60,7 +60,7 @@ Works on **macOS** (primary) and **Linux** (Debian/Ubuntu and Arch). All OS-spec
 | [eza](https://github.com/eza-community/eza) | Modern `ls` |
 | [bat](https://github.com/sharkdp/bat) | Modern `cat` |
 | [yazi](https://yazi-rs.github.io) | Terminal file manager |
-| [Ghostty](https://ghostty.org) | Terminal emulator (macOS & Linux) |
+| [Kitty](https://sw.kovidgoyal.net/kitty/) | Terminal emulator (macOS & Linux) |
 | [Docker Compose](https://docs.docker.com/compose/) | Container runtime for Home Assistant (Linux) |
 | [Home Assistant](https://www.home-assistant.io) | Smart home automation server + HACS (Linux) |
 
@@ -77,7 +77,7 @@ Works on **macOS** (primary) and **Linux** (Debian/Ubuntu and Arch). All OS-spec
 | `~/.config/git/ignore` | `dot_config/git/ignore` | Global gitignore |
 | `~/.config/git/template` | `dot_config/git/template` | Commit message template |
 | `~/.config/gh/config.yml` | `dot_config/gh/private_config.yml` | GitHub CLI preferences |
-| `~/.config/ghostty/` | `dot_config/ghostty/` | Terminal config, themes, icons |
+| `~/.config/kitty/` | `dot_config/kitty/` | Terminal config (select-to-copy, `Cmd+C`/`Cmd+V`, splits) |
 | `~/.config/starship/` | `dot_config/starship/` | Prompt config |
 | `~/.config/bat/` | `dot_config/bat/` | `cat` replacement config |
 | `~/.config/eza/` | `dot_config/eza/` | `ls` replacement config |
@@ -147,7 +147,7 @@ On Linux, the bootstrap process:
 1. Installs chezmoi to `~/.local/bin`
 2. Detects the distro via `/etc/os-release`
 3. **Arch**: runs `pacman -Syu` and installs all packages in one shot, plus `fnm`, `oh-my-zsh`, and plugins
-4. **Debian/Ubuntu**: runs `apt-get install` for base packages, configures native APT repos/PPAs for `gh`, `firefox` (replacing Snap), `google-chrome-stable`, `fastfetch`, and `ghostty`, and installs `fzf`, `starship`, `zoxide`, `lazygit`, `chezmoi`, `just`, `sops`, `fnm`, `oh-my-zsh`, and its plugins
+4. **Debian/Ubuntu**: runs `apt-get install` for base packages (including `kitty`), configures native APT repos/PPAs for `gh`, `firefox` (replacing Snap), `google-chrome-stable`, and `fastfetch`, and installs `fzf`, `starship`, `zoxide`, `lazygit`, `chezmoi`, `just`, `sops`, `fnm`, `oh-my-zsh`, and its plugins
 5. Sets zsh as the default shell (`chsh`) if not already
 6. Applies all dotfiles (including `~/home-assistant/compose.yaml` and `~/home-assistant/config/configuration.yaml`)
 7. Configures always-on server power settings (disables system sleep/suspend/lid switch, enables `ssh` and `tlp`), GNOME desktop favorites & notification settings, macOS-style `Cmd` keybindings (`keyd` + GNOME XKB), and deploys Home Assistant with HACS in Docker
@@ -234,7 +234,7 @@ chezmoi executes `before_` scripts prior to writing target files, and `after_` s
 4. `run_onchange_after_25-install-firefox-apt.sh.tmpl` — Replaces the Ubuntu Firefox Snap with the native `.deb` from Mozilla's official APT repo and configures clean startup/new-tab policies (Linux only)
 5. `run_onchange_after_26-install-chrome-apt.sh.tmpl` — Installs `google-chrome-stable` from Google's official APT repo (Linux only)
 6. `run_once_after_30-disable-sleep.sh.tmpl` — Masks systemd sleep/suspend/hibernate targets, ignores laptop lid switch, enables `ssh`/`sshd`, and enables `tlp` power management (Linux only)
-7. `run_onchange_after_40-gnome-favorites.sh.tmpl` — Pins Ghostty, Firefox, and GNOME Settings to the GNOME dock; silences update notification popups (Snap, App Center, update-notifier, Firefox); sets a 20-minute screen blank timeout (`idle-delay 1200` on Linux, `pmset -c displaysleep 20` on macOS) with AC auto-suspend disabled; opens UFW ports `8123/tcp` (Home Assistant) and `22/tcp` (SSH)
+7. `run_onchange_after_40-gnome-favorites.sh.tmpl` — Pins Kitty, Firefox, and GNOME Settings to the GNOME dock; silences update notification popups (Snap, App Center, update-notifier, Firefox); sets a 20-minute screen blank timeout (`idle-delay 1200` on Linux, `pmset -c displaysleep 20` on macOS) with AC auto-suspend disabled; opens UFW ports `8123/tcp` (Home Assistant) and `22/tcp` (SSH)
 8. `run_onchange_after_50-macos-keymap.sh.tmpl` — Swaps Left Command and Left Control via GNOME XKB options and kernel-level `keyd` for system-wide macOS-style `Cmd+C`/`Cmd+V` shortcuts, disables `Super+V` notification tray binding, and maps `Command+Space` to GNOME Overview search (Linux only)
 9. `run_once_after_60-install-homeassistant-docker.sh.tmpl` — Installs Docker Engine and the Docker Compose V2 plugin, adds `$USER` to `docker`/`dialout`/`tty` groups, disables `ModemManager`, opens UFW ports `8123` and `22`, starts Home Assistant via Docker Compose in `~/home-assistant/`, and installs HACS (Linux only)
 
@@ -297,10 +297,8 @@ No runtime OS detection happens in any shell config file.
 │   │   └── template                 # → ~/.config/git/template (commit message template)
 │   ├── gh/
 │   │   └── private_config.yml       # → ~/.config/gh/config.yml
-│   ├── ghostty/
-│   │   ├── config                   # Terminal settings (font, theme, keybinds, copy-on-select)
-│   │   ├── icons/                   # Custom app icon
-│   │   └── themes/                  # Custom color themes
+│   ├── kitty/
+│   │   └── kitty.conf               # Terminal settings (font, copy-on-select, Cmd+C/Cmd+V, splits)
 │   ├── starship/
 │   │   └── starship.toml            # Prompt configuration
 │   ├── bat/                         # bat (cat replacement) config
@@ -666,7 +664,7 @@ Home Assistant is configured in `compose.yaml` with `privileged: true`, `network
 
 | App | Purpose |
 |-----|---------|
-| Ghostty | Terminal emulator |
+| Kitty | Terminal emulator |
 | OrbStack | Docker / Linux VMs |
 | 1Password + CLI | Password manager + secrets |
 | Raycast | Spotlight replacement |
@@ -689,12 +687,12 @@ Home Assistant is configured in `compose.yaml` with `privileged: true`, `network
 ### Linux — Native Packages
 
 **Arch** (via `pacman` + install scripts):
-- `pacman`: `zsh`, `starship`, `eza`, `bat`, `fzf`, `fd`, `ripgrep`, `zoxide`, `direnv`, `git`, `neovim`, `lazygit`, `github-cli`, `jq`, `tmux`, `age`, `gnupg`, `curl`, `wget`, `rsync`, `tree`, `btop`, `fastfetch`, `chezmoi`, `just`, `sops`, `tlp`, `ghostty`, `keyd`, `docker`, `docker-compose`
+- `pacman`: `zsh`, `starship`, `eza`, `bat`, `fzf`, `fd`, `ripgrep`, `zoxide`, `direnv`, `git`, `neovim`, `lazygit`, `github-cli`, `jq`, `tmux`, `age`, `gnupg`, `curl`, `wget`, `rsync`, `tree`, `btop`, `fastfetch`, `chezmoi`, `just`, `sops`, `tlp`, `kitty`, `keyd`, `docker`, `docker-compose`
 - Install scripts: `fnm`, `oh-my-zsh`, `zsh-autosuggestions`, `zsh-syntax-highlighting`
 
 **Debian/Ubuntu** (via `apt`, official repos/PPAs, and install scripts):
-- `apt`: `zsh`, `eza`, `bat`, `fd-find`, `ripgrep`, `direnv`, `git`, `neovim`, `jq`, `tmux`, `age`, `gnupg`, `curl`, `wget`, `rsync`, `tree`, `btop`, `python3`, `python3-pip`, `python3-selenium`, `python3-venv`, `fail2ban`, `gnome-tweaks`, `silversearcher-ag`, `tlp`, `keyd`, `xz-utils`, `make`, `unzip`, `openssh-server`, `chromium-chromedriver`, `software-properties-common`
-- Official APT repos & PPAs: `gh` (GitHub CLI APT repo), `firefox` (Mozilla APT repo — native `.deb` replacing Snap), `google-chrome-stable` (Google APT repo), `docker-ce` & `docker-compose-plugin` (Docker APT repo), `fastfetch` (`ppa:zhangsongcui3371/fastfetch`), `ghostty` (`ppa:mkick/ghostty`)
+- `apt`: `zsh`, `eza`, `bat`, `fd-find`, `ripgrep`, `direnv`, `git`, `neovim`, `jq`, `tmux`, `age`, `gnupg`, `curl`, `wget`, `rsync`, `tree`, `btop`, `kitty`, `python3`, `python3-pip`, `python3-selenium`, `python3-venv`, `fail2ban`, `gnome-tweaks`, `silversearcher-ag`, `tlp`, `keyd`, `xz-utils`, `make`, `unzip`, `openssh-server`, `chromium-chromedriver`, `software-properties-common`
+- Official APT repos & PPAs: `gh` (GitHub CLI APT repo), `firefox` (Mozilla APT repo — native `.deb` replacing Snap), `google-chrome-stable` (Google APT repo), `docker-ce` & `docker-compose-plugin` (Docker APT repo), `fastfetch` (`ppa:zhangsongcui3371/fastfetch`)
 - Install scripts / GitHub releases: `fzf` (GitHub releases — `apt` version is too old for `fzf --zsh`), `starship`, `zoxide`, `lazygit`, `chezmoi`, `just`, `sops`, `fnm`, `oh-my-zsh`, `zsh-autosuggestions`, `zsh-syntax-highlighting`
 
 ---
@@ -879,28 +877,27 @@ chsh -s /usr/bin/zsh
 # Log out and back in for the change to apply
 ```
 
-### Ghostty Two-Finger Scroll Shows Command History Instead of Scrolling Output
+### Terminal Two-Finger Scroll Shows Command History or Typing `|` Prints `;2;124~`
 
-**Symptoms:** Using a two-finger touchpad scroll up/down at the shell prompt cycles through previous Zsh commands (as if pressing the `Up`/`Down` arrow keys) instead of scrolling the terminal's output buffer.
+**Symptoms:**
+- Using a two-finger touchpad scroll up/down at the shell prompt cycles through previous Zsh commands instead of scrolling the terminal's output buffer.
+- Typing shifted symbols like `|` prints escape fragments such as `;2;124~` (from `\e[27;2;124~`, where `124` is the ASCII code for `|` and `2` is `Shift`).
 
-**Cause:** A full-screen/TUI program (`btop`, `lazygit`, `yazi`, `nvim`, `less`, `opencode`, or an interrupted `ssh` session) exited without restoring the primary terminal screen, leaving Ghostty stuck in the **alternate screen buffer** (`?1049h`) with **Alternate Scroll Mode** (`?1007h`) active. In that mode, Ghostty translates touchpad scroll events into `Up`/`Down` arrow key presses.
+**Cause:** Both symptoms come from the same root cause: a full-screen/TUI program (`opencode`, `nvim`, `lazygit`, `yazi`, `btop`, `less`, or an interrupted `ssh` session) exited without cleaning up its terminal modes. This leaves the terminal stuck in:
+1. **Alternate Screen Buffer (`?1049h`) + Alternate Scroll Mode (`?1007h`)** — translates touchpad scrolling into `Up`/`Down` arrow keys.
+2. **xterm `modifyOtherKeys` mode 2 (`\e[>4;2m`) or extended keyboard mode (`\e[>1u`)** — encodes shifted keys like `|` as `\e[27;2;124~`, which Zsh doesn't expect at a normal prompt.
 
 **How to manually fix it:**
 
-Run any one of the following commands in the affected terminal tab:
-
 ```bash
-# Option 1: Exit the alternate screen without clearing your terminal (recommended)
-tput rmcup
-
-# Option 2: Explicitly exit alternate screen (?1049l) and disable alternate scroll (?1007l)
-printf '\e[?1049l\e[?1007l'
-
-# Option 3: Full terminal reset (also clears the screen)
+# Option 1: Full terminal reset (easiest — uses only lowercase letters so it works even when shifted keys like | or ' are broken)
 reset
+
+# Option 2: Reset alternate screen, alternate scroll, modifyOtherKeys, and extended keyboard mode without clearing the screen
+printf '\e[?1049l\e[?1007l\e[>4;0m\e[<u'
 ```
 
-> **Tip:** If you are actively inside a full-screen TUI app (like `less` or `btop`) and want to scroll Ghostty's outer scrollback buffer without exiting the app, hold **`Shift`** while two-finger scrolling.
+> **Tip:** If you are actively inside a full-screen TUI app (like `less` or `btop`) and want to scroll the terminal's outer scrollback buffer without exiting the app, hold **`Shift`** while two-finger scrolling.
 
 ---
 
