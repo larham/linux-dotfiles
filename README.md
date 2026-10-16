@@ -22,6 +22,7 @@ Works on **macOS** (primary) and **Linux** (Debian/Ubuntu and Arch). All OS-spec
 - [Encryption](#encryption)
 - [Day-to-Day Usage](#day-to-day-usage)
 - [Shell Setup](#shell-setup)
+- [Docker & Home Assistant (Linux)](#docker--home-assistant-linux)
 - [Installed Tools](#installed-tools)
 - [Adding New Files](#adding-new-files)
 - [Troubleshooting](#troubleshooting)
@@ -30,12 +31,14 @@ Works on **macOS** (primary) and **Linux** (Debian/Ubuntu and Arch). All OS-spec
 
 ## Key Features
 
-- **One-command bootstrap** — `chezmoi init --apply boranuzun` sets up a new machine end-to-end
+- **One-command bootstrap** — `chezmoi init --apply larham/linux-dotfiles` sets up a new machine end-to-end
 - **Cross-platform** — macOS (Apple Silicon) and Linux (Debian/Ubuntu, Arch) with OS-gated templates
-- **Age encryption** for secrets (SSH config, GitHub hosts)
+- **Age encryption** support for secrets (gracefully skipped if `~/.config/chezmoi/key.txt` is not present)
 - **Templated configs** — shell files and git config adapt based on OS, user identity, GPG key, and whether OrbStack is installed
 - **Optional GPG commit signing** — prompted during init; signs commits automatically when a key ID is provided
-- **Auto-installs packages** — Homebrew + `Brewfile` on macOS; `apt`/`pacman` on Linux
+- **Auto-installs packages** — Homebrew + `Brewfile` on macOS; `apt`/`pacman` + official repos on Linux
+- **Linux desktop & server polish** — macOS-style `Cmd` keybindings (`keyd` + GNOME), native Firefox `.deb` & Google Chrome, Ghostty terminal, sleep/lid-switch disabled for always-on server use
+- **Home Assistant on Docker (Linux)** — automatically installs Docker Engine + Compose V2, deploys Home Assistant with HACS and USB Zigbee pass-through in `~/home-assistant/`
 - **Zsh on all platforms** — installed and set as default shell on Linux automatically
 - **Conventional commit template** enforced globally for all git repos
 
@@ -52,11 +55,14 @@ Works on **macOS** (primary) and **Linux** (Debian/Ubuntu and Arch). All OS-spec
 | [Starship](https://starship.rs) | Shell prompt |
 | [fzf](https://github.com/junegunn/fzf) | Fuzzy finder |
 | [fnm](https://github.com/Schniz/fnm) | Node.js version manager |
+| [direnv](https://direnv.net) | Per-directory environment loader |
 | [zoxide](https://github.com/ajeetdsouza/zoxide) | Smart `cd` |
 | [eza](https://github.com/eza-community/eza) | Modern `ls` |
 | [bat](https://github.com/sharkdp/bat) | Modern `cat` |
 | [yazi](https://yazi-rs.github.io) | Terminal file manager |
-| [Ghostty](https://ghostty.org) | Terminal emulator (macOS) |
+| [Ghostty](https://ghostty.org) | Terminal emulator (macOS & Linux) |
+| [Docker Compose](https://docs.docker.com/compose/) | Container runtime for Home Assistant (Linux) |
+| [Home Assistant](https://www.home-assistant.io) | Smart home automation server + HACS (Linux) |
 
 ---
 
@@ -70,7 +76,7 @@ Works on **macOS** (primary) and **Linux** (Debian/Ubuntu and Arch). All OS-spec
 | `~/.config/git/config` | `dot_config/git/config.tmpl` | Templated (name, email, optional GPG signing) |
 | `~/.config/git/ignore` | `dot_config/git/ignore` | Global gitignore |
 | `~/.config/git/template` | `dot_config/git/template` | Commit message template |
-| `~/.config/gh/` | `dot_config/gh/` | GitHub CLI preferences and encrypted hosts |
+| `~/.config/gh/config.yml` | `dot_config/gh/private_config.yml` | GitHub CLI preferences |
 | `~/.config/ghostty/` | `dot_config/ghostty/` | Terminal config, themes, icons |
 | `~/.config/starship/` | `dot_config/starship/` | Prompt config |
 | `~/.config/bat/` | `dot_config/bat/` | `cat` replacement config |
@@ -78,13 +84,15 @@ Works on **macOS** (primary) and **Linux** (Debian/Ubuntu and Arch). All OS-spec
 | `~/.config/yazi/` | `dot_config/yazi/` | File manager config |
 | `~/.config/fastfetch/` | `dot_config/fastfetch/` | System info display |
 | `~/.config/btop/` | `dot_config/btop/` | Resource monitor config |
-| `~/.ssh/config` | `private_dot_ssh/encrypted_config.age` | Encrypted SSH config |
+| `~/home-assistant/` | `home-assistant/` | Home Assistant `compose.yaml` & `config/configuration.yaml` (Linux only) |
 | `~/Brewfile` (applied at source) | `Brewfile` | All Homebrew packages and casks (macOS only) |
 
 **Not tracked** (excluded via `.chezmoiignore`):
 - `~/.config/opencode/` — AI coding assistant (machine-specific)
 - `~/.config/nvim/` — Neovim config (managed separately)
 - `~/.config/op/` — 1Password CLI (machine-specific)
+- `~/home-assistant/` on macOS — skipped automatically when `.chezmoi.os != "linux"`
+- Age-encrypted files (`*.age`) when `~/.config/chezmoi/key.txt` is not present
 
 ---
 
@@ -94,9 +102,7 @@ Works on **macOS** (primary) and **Linux** (Debian/Ubuntu and Arch). All OS-spec
 
 - **macOS** (Apple Silicon assumed; Homebrew path `/opt/homebrew`)
 - **Internet access** for Homebrew and package installation
-- **age key file** at `~/.config/chezmoi/key.txt` to decrypt secrets
-
-  Retrieve your age key from 1Password before bootstrapping:
+- **(Optional) age key file** at `~/.config/chezmoi/key.txt` to decrypt age-encrypted secrets (if missing, `.chezmoiignore` automatically skips encrypted files):
   ```bash
   mkdir -p ~/.config/chezmoi
   # Paste your age private key into:
@@ -108,8 +114,8 @@ Works on **macOS** (primary) and **Linux** (Debian/Ubuntu and Arch). All OS-spec
 
 - **Debian/Ubuntu** or **Arch Linux**
 - **Internet access** for package installation
-- **`sudo` access** for package manager commands and setting default shell
-- **age key file** at `~/.config/chezmoi/key.txt` (same as macOS)
+- **`sudo` access** for package manager commands, system services, and setting default shell
+- **(Optional) age key file** at `~/.config/chezmoi/key.txt` (same as macOS)
 - `curl` must be available before bootstrapping (pre-installed on most distros)
 
 ---
@@ -119,29 +125,32 @@ Works on **macOS** (primary) and **Linux** (Debian/Ubuntu and Arch). All OS-spec
 ### macOS
 
 ```bash
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply boranuzun
+sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply larham/linux-dotfiles
 ```
 
 This single command:
 1. Downloads and installs chezmoi
-2. Clones `github.com/boranuzun/dotfiles` to `~/.local/share/chezmoi`
+2. Clones `github.com/larham/linux-dotfiles` to `~/.local/share/chezmoi`
 3. Runs `run_once_before_10-install-homebrew.sh.tmpl` — installs Homebrew if absent
 4. Runs `run_once_before_20-install-packages.sh.tmpl` — runs `brew bundle` from `Brewfile`, then installs oh-my-zsh and its plugins
 5. Prompts for configuration values (see below)
 6. Applies all dotfiles to their target locations
+7. Sets AC display sleep timeout to 20 minutes via `pmset`
 
 ### Linux
 
 ```bash
-sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply boranuzun
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin init --apply larham/linux-dotfiles
 ```
 
-On Linux, the bootstrap script:
+On Linux, the bootstrap process:
 1. Installs chezmoi to `~/.local/bin`
 2. Detects the distro via `/etc/os-release`
-3. **Arch**: runs `pacman -Syu` and installs all packages in one shot
-4. **Debian/Ubuntu**: runs `apt-get install` for packages available in apt, then installs `gh`, `fzf`, `starship`, `zoxide`, `lazygit`, `fastfetch`, `chezmoi`, `just`, `sops`, `oh-my-zsh`, and its plugins via their official install scripts or GitHub releases
+3. **Arch**: runs `pacman -Syu` and installs all packages in one shot, plus `fnm`, `oh-my-zsh`, and plugins
+4. **Debian/Ubuntu**: runs `apt-get install` for base packages, configures native APT repos/PPAs for `gh`, `firefox` (replacing Snap), `google-chrome-stable`, `fastfetch`, and `ghostty`, and installs `fzf`, `starship`, `zoxide`, `lazygit`, `chezmoi`, `just`, `sops`, `fnm`, `oh-my-zsh`, and its plugins
 5. Sets zsh as the default shell (`chsh`) if not already
+6. Applies all dotfiles (including `~/home-assistant/compose.yaml` and `~/home-assistant/config/configuration.yaml`)
+7. Configures always-on server power settings (disables system sleep/suspend/lid switch, enables `ssh` and `tlp`), GNOME desktop favorites & notification settings, macOS-style `Cmd` keybindings (`keyd` + GNOME XKB), and deploys Home Assistant with HACS in Docker
 
 > **Note:** Homebrew is **not** installed on Linux. Native package managers are used instead.
 
@@ -171,8 +180,8 @@ git config --global user.name
 # Check GPG signing (if configured)
 git config --global commit.gpgsign
 
-# Check SSH config was decrypted
-cat ~/.ssh/config
+# (Linux) Check Home Assistant container is running
+docker ps
 ```
 
 ### Post-Bootstrap Steps (Manual)
@@ -183,7 +192,8 @@ These are not automated and must be done manually after bootstrapping:
   ```bash
   gh auth login
   ```
-- **(macOS only) 1Password SSH agent** — Enable in 1Password settings → Developer → SSH Agent. The SSH config already has `IdentityAgent` pointing to it.
+- **(Linux) Log out and back in** — Required for the default shell (`zsh`) and `docker`/`dialout`/`tty` group memberships to take effect in new terminal sessions.
+- **(macOS only) 1Password SSH agent** — If using 1Password for SSH keys, enable in 1Password settings → Developer → SSH Agent.
 
 ---
 
@@ -205,23 +215,30 @@ chezmoi uses filename prefixes/suffixes to control behavior:
 | `private_` | Applies `0600` permissions in target |
 | `.tmpl` suffix | Rendered as a Go template before applying |
 | `.age` suffix | Decrypted with age before applying |
-| `run_once_before_` | Shell script run once, before applying dotfiles |
+| `run_before_` | Shell script run on every `chezmoi apply`, before applying dotfiles |
+| `run_once_before_` | Shell script run once (tracked by content hash), before applying dotfiles |
+| `run_once_after_` | Shell script run once (tracked by content hash), after applying dotfiles |
+| `run_onchange_after_` | Shell script run whenever its rendered content changes, after applying dotfiles |
 | `encrypted_` | Convention (not enforced) — file is age-encrypted |
 
 ### Bootstrap Script Order
 
-Scripts run in lexicographic order by filename, before files are applied:
+chezmoi executes `before_` scripts prior to writing target files, and `after_` scripts once target files are in place (ordered lexicographically):
 
+**Before applying files:**
 1. `run_once_before_10-install-homebrew.sh.tmpl` — Installs Homebrew (macOS only; no-op on Linux)
-2. `run_once_before_20-install-packages.sh.tmpl` — Installs packages (`brew bundle` on macOS, `apt`/`pacman` on Linux)
-3. `run_onchange_after_25-install-firefox-apt.sh.tmpl` — Installs native Firefox .deb from official Mozilla APT repo, replacing Snap (Linux only)
-4. `run_onchange_after_26-install-chrome-apt.sh.tmpl` — Installs google-chrome-stable from official Google APT repo (Linux only)
-5. `run_once_after_30-disable-sleep.sh.tmpl` — Disables sleep, suspend, and lid switch; enables SSH (Linux only)
-6. `run_onchange_after_40-gnome-favorites.sh.tmpl` — Pins Ghostty, Firefox, and GNOME System Settings to GNOME dock (Linux only)
-7. `run_onchange_after_50-macos-keymap.sh.tmpl` — Maps Left Command key to Control in GNOME for macOS-style Cmd+C / Cmd+V shortcuts (Linux only)
-8. `run_once_after_60-install-homeassistant-docker.sh.tmpl` — Installs Docker and deploys Home Assistant Container via Docker Compose in `~/home-assistant/` with HACS and USB Zigbee dongle pass-through (Linux only)
+2. `run_once_before_20-install-packages.sh.tmpl` — Installs packages (`brew bundle` on macOS; `apt`/`pacman` + official APT repos/PPAs/install scripts on Linux) and Oh My Zsh + plugins; sets `zsh` as default shell on Linux
+3. `run_before_50-chown-homeassistant.sh.tmpl` — Checks if `~/home-assistant/config` contains `root`-owned files created by the Home Assistant container and runs `sudo chown -R $USER:$USER` so chezmoi can cleanly update config files (Linux only)
 
-`run_once_` scripts only execute once per machine (chezmoi tracks them by content hash). To force re-run, delete the entry from `~/.local/share/chezmoi/.chezmoistate.boltdb`.
+**After applying files:**
+4. `run_onchange_after_25-install-firefox-apt.sh.tmpl` — Replaces the Ubuntu Firefox Snap with the native `.deb` from Mozilla's official APT repo and configures clean startup/new-tab policies (Linux only)
+5. `run_onchange_after_26-install-chrome-apt.sh.tmpl` — Installs `google-chrome-stable` from Google's official APT repo (Linux only)
+6. `run_once_after_30-disable-sleep.sh.tmpl` — Masks systemd sleep/suspend/hibernate targets, ignores laptop lid switch, enables `ssh`/`sshd`, and enables `tlp` power management (Linux only)
+7. `run_onchange_after_40-gnome-favorites.sh.tmpl` — Pins Ghostty, Firefox, and GNOME Settings to the GNOME dock; silences update notification popups (Snap, App Center, update-notifier, Firefox); sets a 20-minute screen blank timeout (`idle-delay 1200` on Linux, `pmset -c displaysleep 20` on macOS) with AC auto-suspend disabled; opens UFW ports `8123/tcp` (Home Assistant) and `22/tcp` (SSH)
+8. `run_onchange_after_50-macos-keymap.sh.tmpl` — Swaps Left Command and Left Control via GNOME XKB options and kernel-level `keyd` for system-wide macOS-style `Cmd+C`/`Cmd+V` shortcuts, disables `Super+V` notification tray binding, and maps `Command+Space` to GNOME Overview search (Linux only)
+9. `run_once_after_60-install-homeassistant-docker.sh.tmpl` — Installs Docker Engine and the Docker Compose V2 plugin, adds `$USER` to `docker`/`dialout`/`tty` groups, disables `ModemManager`, opens UFW ports `8123` and `22`, starts Home Assistant via Docker Compose in `~/home-assistant/`, and installs HACS (Linux only)
+
+`run_once_` scripts only execute once per machine (chezmoi tracks them by content hash), while `run_onchange_` scripts re-run automatically whenever their contents change.
 
 ### OS Branching
 
@@ -248,52 +265,55 @@ No runtime OS detection happens in any shell config file.
 ```
 ~/.local/share/chezmoi/
 ├── .chezmoi.toml.tmpl               # Config template (prompts, encryption settings)
-├── .chezmoiignore                   # Files excluded from management
+├── .chezmoiignore                   # Files excluded from management (OS & key gated)
 ├── .gitignore                       # Excludes age key and other local-only files
 ├── Brewfile                         # All Homebrew packages and casks (macOS only)
 ├── dot_zshrc                        # → ~/.zshrc (delegates to ~/.config/zsh/.zshrc)
 ├── dot_zprofile.tmpl                # → ~/.zprofile (Homebrew/OrbStack — macOS gated)
-├── run_once_before_10-install-homebrew.sh.tmpl   # Installs Homebrew (macOS only)
-├── run_once_before_20-install-packages.sh.tmpl   # Installs packages (cross-platform)
-├── run_onchange_after_25-install-firefox-apt.sh.tmpl # Installs native Firefox .deb via Mozilla APT repo (Linux only)
-├── run_onchange_after_26-install-chrome-apt.sh.tmpl  # Installs google-chrome-stable via Google APT repo (Linux only)
-├── run_once_after_30-disable-sleep.sh.tmpl       # Disables sleep & configures SSH (Linux only)
-├── run_onchange_after_40-gnome-favorites.sh.tmpl # Pins Ghostty, Firefox & Settings to GNOME dock (Linux only)
-├── run_onchange_after_50-macos-keymap.sh.tmpl   # Maps Left Command key to Control for macOS Cmd+C/Cmd+V (Linux only)
-├── run_once_after_60-install-homeassistant-docker.sh.tmpl # Deploys Home Assistant via Docker Compose in ~/home-assistant/ with Zigbee USB pass-through (Linux only)
+├── run_once_before_10-install-homebrew.sh.tmpl        # Installs Homebrew (macOS only)
+├── run_once_before_20-install-packages.sh.tmpl        # Installs packages (cross-platform)
+├── run_before_50-chown-homeassistant.sh.tmpl          # Fixes root ownership in ~/home-assistant/config (Linux only)
+├── run_onchange_after_25-install-firefox-apt.sh.tmpl  # Native Firefox .deb & policies via Mozilla APT (Linux only)
+├── run_onchange_after_26-install-chrome-apt.sh.tmpl   # Installs google-chrome-stable via Google APT (Linux only)
+├── run_once_after_30-disable-sleep.sh.tmpl            # Disables sleep, enables SSH & TLP (Linux only)
+├── run_onchange_after_40-gnome-favorites.sh.tmpl      # GNOME dock favorites, notifications, 20m screen timeout, UFW
+├── run_onchange_after_50-macos-keymap.sh.tmpl         # macOS Cmd keybindings via keyd & GNOME XKB (Linux only)
+├── run_once_after_60-install-homeassistant-docker.sh.tmpl # Installs Docker & deploys Home Assistant + HACS (Linux only)
+├── home-assistant/                  # → ~/home-assistant/ (Linux only; ignored on macOS)
+│   ├── compose.yaml                 # Docker Compose service definition for Home Assistant
+│   └── config/
+│       └── configuration.yaml       # Base Home Assistant configuration
 ├── dot_config/
 │   ├── zsh/
-│   │   ├── dot_zshrc               # → ~/.config/zsh/.zshrc (sources all modules)
-│   │   ├── aliases.zsh.tmpl        # Shell aliases (macOS/Linux variants)
-│   │   ├── env.zsh.tmpl            # $PATH, $EDITOR, Starship, zoxide init
-│   │   ├── fzf.zsh                 # fzf + yazi shell integration
-│   │   ├── history.zsh             # Zsh history settings
-│   │   └── omz.zsh.tmpl            # Oh My Zsh config (macos plugin gated)
+│   │   ├── dot_zshrc                # → ~/.config/zsh/.zshrc (sources all modules)
+│   │   ├── aliases.zsh.tmpl         # Shell aliases (macOS/Linux variants)
+│   │   ├── env.zsh.tmpl             # $PATH, $EDITOR, Starship, zoxide, fnm, direnv init
+│   │   ├── fzf.zsh                  # fzf + yazi shell integration
+│   │   ├── history.zsh              # Zsh history settings
+│   │   └── omz.zsh.tmpl             # Oh My Zsh config (macos plugin gated)
 │   ├── git/
-│   │   ├── config.tmpl             # → ~/.config/git/config (name, email, optional GPG signing)
-│   │   ├── ignore                  # → ~/.config/git/ignore (global gitignore)
-│   │   └── template                # → ~/.config/git/template (commit message template)
+│   │   ├── config.tmpl              # → ~/.config/git/config (name, email, optional GPG signing)
+│   │   ├── ignore                   # → ~/.config/git/ignore (global gitignore)
+│   │   └── template                 # → ~/.config/git/template (commit message template)
 │   ├── gh/
-│   │   ├── private_config.yml              # → ~/.config/gh/config.yml
-│   │   └── encrypted_private_hosts.yml.age # → ~/.config/gh/hosts.yml (auth tokens)
+│   │   └── private_config.yml       # → ~/.config/gh/config.yml
 │   ├── ghostty/
-│   │   ├── config                  # Terminal settings (font, theme, keybinds)
-│   │   ├── icons/                  # Custom app icon
-│   │   └── themes/                 # Custom color themes
+│   │   ├── config                   # Terminal settings (font, theme, keybinds, copy-on-select)
+│   │   ├── icons/                   # Custom app icon
+│   │   └── themes/                  # Custom color themes
 │   ├── starship/
-│   │   └── starship.toml           # Prompt configuration
-│   ├── bat/                        # bat (cat replacement) config
-│   ├── eza/                        # eza (ls replacement) config
+│   │   └── starship.toml            # Prompt configuration
+│   ├── bat/                         # bat (cat replacement) config
+│   ├── eza/                         # eza (ls replacement) config
 │   ├── yazi/
-│   │   ├── yazi.toml               # File manager config
-│   │   ├── keymaps.toml            # Custom keybindings
-│   │   ├── theme.toml              # Color theme
-│   │   ├── package.toml            # yazi plugins
-│   │   └── flavors/                # Theme flavors (ayu-dark, catppuccin-*, dracula, flexoki, kanagawa)
-│   ├── fastfetch/                  # System info display config
-│   └── btop/                       # Resource monitor config
-└── private_dot_ssh/
-    └── encrypted_config.age        # → ~/.ssh/config (SSH host definitions)
+│   │   ├── yazi.toml                # File manager config
+│   │   ├── keymaps.toml             # Custom keybindings
+│   │   ├── theme.toml               # Color theme
+│   │   ├── package.toml             # yazi plugins
+│   │   └── flavors/                 # Theme flavors (ayu-dark, catppuccin-*, dracula, flexoki, kanagawa)
+│   ├── fastfetch/                   # System info display config
+│   └── btop/                        # Resource monitor config
+└── private_dot_ssh/                 # → ~/.ssh/ (directory for SSH configs)
 ```
 
 ---
@@ -327,20 +347,13 @@ Example usage in a template:
 
 ## Encryption
 
-Secrets are encrypted with [age](https://age-encryption.org) before being committed to the public repo.
+Secret encryption is configured with [age](https://age-encryption.org) in `.chezmoi.toml.tmpl`.
 
 ### Key Details
 
 - **age key location**: `~/.config/chezmoi/key.txt` (never committed, `chmod 600`)
 - **Public recipient**: `age16mv7ycglyrn68pnrfv6r2pf72swjffn20sdehfdha7l5sqlr3s2qa2mlsl`
-- **Key backup**: Stored in 1Password (Personal vault)
-
-### Encrypted Files
-
-| Source file | Decrypted target |
-|-------------|-----------------|
-| `dot_config/gh/encrypted_private_hosts.yml.age` | `~/.config/gh/hosts.yml` |
-| `private_dot_ssh/encrypted_config.age` | `~/.ssh/config` |
+- **Fallback behavior**: If `~/.config/chezmoi/key.txt` is not present on the machine, `.chezmoiignore` automatically ignores age-encrypted files (`dot_config/gh/encrypted_private_hosts.yml.age` and `private_dot_ssh/encrypted_config.age`) so `chezmoi apply` still succeeds without errors.
 
 ### Encrypting a New Secret File
 
@@ -357,8 +370,7 @@ chezmoi encrypt ~/.config/some/plaintext-file > \
 
 ```bash
 # Opens decrypted content in $EDITOR, re-encrypts on save
-chezmoi edit ~/.ssh/config
-chezmoi edit ~/.config/gh/hosts.yml
+chezmoi edit ~/.config/some/secret-file
 ```
 
 ---
@@ -421,11 +433,12 @@ chezmoi update
 
 ### Re-Run a Bootstrap Script
 
-Bootstrap scripts run only once (tracked by content hash). To force re-run:
+`run_once_` scripts run only once (tracked by content hash). To force re-run:
 
 ```bash
 # Reset the run-once state for all scripts
 chezmoi state delete-bucket --bucket=scriptState
+chezmoi apply
 ```
 
 Or edit the script slightly (e.g., add a comment) to change its hash.
@@ -440,7 +453,7 @@ The Zsh configuration is split into focused modules under `~/.config/zsh/`:
 
 | File | Purpose |
 |------|---------|
-| `env.zsh.tmpl` | `$PATH` (Homebrew on macOS), `$EDITOR`, locale, Starship init, zoxide init, fnm init |
+| `env.zsh.tmpl` | `$PATH` (`~/.local/bin`, Bun, plus Homebrew & Antigravity on macOS), `$EDITOR` (`nvim`), `en_US.UTF-8` locale, Starship, zoxide, fnm, and direnv init |
 | `history.zsh` | History file size (1,000,000 entries), dedup and sharing options |
 | `fzf.zsh` | fzf key bindings (`source <(fzf --zsh)`), previews using `bat` and `eza`, yazi `y()` wrapper |
 | `omz.zsh.tmpl` | Oh My Zsh theme (none — Starship handles prompt), plugins list |
@@ -451,7 +464,7 @@ The Zsh configuration is split into focused modules under `~/.config/zsh/`:
 
 | Alias | Command | Description |
 |-------|---------|-------------|
-| `ls` | `eza --color --icons --long --header --git` | Long listing with git status |
+| `ls` | `eza --color=always --icons=always --long --header --git --time-style=relative --group-directories-first` | Long listing with git status and relative timestamps |
 | `lt` | `eza --tree --level=2 --long --icons --git` | Tree view (2 levels, with sizes) |
 | `ltree` | `eza --tree --level=2 --icons --git` | Tree view (2 levels, compact) |
 | `cd` | `z` | zoxide smart directory jump |
@@ -461,9 +474,14 @@ The Zsh configuration is split into focused modules under `~/.config/zsh/`:
 | `opc` | `opencode` | AI coding assistant |
 | `cm` | `chezmoi` | chezmoi shortcut |
 | `gh-create` | `gh repo create --private --source=. --remote=origin && git push -u --all && gh browse` | Create private GitHub repo and push |
-| `fh` | `fc -l 1 \| tac \| fzf` | Fuzzy search shell history |
+| `fh` | `fc -l 1 \| tac \| fzf --no-sort --border` | Fuzzy search shell history |
 | `rr` | `source ~/.zshrc` | Reload shell config |
+| `c` / `e` | `clear` / `exit` | Clear terminal / exit shell |
+| `shutdown` / `reboot` | `sudo shutdown now` / `sudo reboot` | Power off / reboot machine |
+| `doc` / `dow` | `$HOME/Documents` / `$HOME/Downloads` | Quick path shortcuts |
 | `ql` | `qlmanage -p` | Quick Look preview (macOS only) |
+| `spoon` | `/Applications/data-integration/spoon.sh` | Launch Pentaho Data Integration (macOS only) |
+| `idea` | `$HOME/Applications/IntelliJ\ IDEA\ Ultimate.app/Contents/MacOS/idea` | Launch IntelliJ IDEA Ultimate (macOS only) |
 
 ### Oh My Zsh Plugins
 
@@ -509,12 +527,119 @@ The Starship prompt (`~/.config/starship/starship.toml`) shows:
 
 ---
 
+## Docker & Home Assistant (Linux)
+
+On Linux, `run_once_after_60-install-homeassistant-docker.sh.tmpl` automatically installs **Docker Engine** (`docker-ce`) and the **Docker Compose V2 plugin** (`docker compose`), configures firewall rules (`8123/tcp` and `22/tcp`), and deploys **Home Assistant Container** with **HACS** (Home Assistant Community Store) pre-unpacked.
+
+### How It Is Configured
+
+- **Compose file**: `~/home-assistant/compose.yaml` (managed by chezmoi from `home-assistant/compose.yaml`)
+- **Config directory**: `~/home-assistant/config/` (mounted to `/config` inside the container)
+- **Container name**: `homeassistant`
+- **Image**: `ghcr.io/home-assistant/home-assistant:stable`
+- **Auto-start policy**: `restart: unless-stopped` — Home Assistant automatically starts on system boot unless you explicitly stop it
+- **Web UI**: `http://localhost:8123` (or `http://<linux-host-ip>:8123` on your local network)
+- **File ownership handling**: Because the Home Assistant container runs as `root`, files it creates in `~/home-assistant/config/` are owned by `root`. Before every `chezmoi apply`, `run_before_50-chown-homeassistant.sh.tmpl` automatically runs `sudo chown -R "$USER:$USER" ~/home-assistant/config` if any root-owned files are detected.
+
+### Starting, Stopping, and Restarting Home Assistant
+
+You can manage the Home Assistant container using either `docker compose` (recommended) or `docker` directly:
+
+```bash
+# --- Using Docker Compose (from anywhere) ---
+
+# Start Home Assistant in the background (creates/recreates container if needed)
+docker compose -f ~/home-assistant/compose.yaml up -d
+
+# Stop Home Assistant (keeps container intact, stops running process)
+docker compose -f ~/home-assistant/compose.yaml stop
+
+# Start a stopped Home Assistant container
+docker compose -f ~/home-assistant/compose.yaml start
+
+# Restart Home Assistant (e.g., after editing configuration.yaml or updating HACS components)
+docker compose -f ~/home-assistant/compose.yaml restart
+
+# Stop and remove the container (your data in ~/home-assistant/config is preserved)
+docker compose -f ~/home-assistant/compose.yaml down
+```
+
+If you `cd ~/home-assistant` first, you can omit `-f ~/home-assistant/compose.yaml`:
+
+```bash
+cd ~/home-assistant
+docker compose up -d      # Start
+docker compose stop       # Stop
+docker compose restart    # Restart
+docker compose down       # Stop & remove container
+```
+
+Or using standard `docker` commands by container name (`homeassistant`):
+
+```bash
+docker start homeassistant
+docker stop homeassistant
+docker restart homeassistant
+```
+
+### Checking Status, Logs, and Updating Home Assistant
+
+```bash
+# Check if the container is running
+docker compose -f ~/home-assistant/compose.yaml ps
+# or:
+docker ps
+
+# Follow live Home Assistant logs (press Ctrl+C to exit)
+docker compose -f ~/home-assistant/compose.yaml logs -f
+# or:
+docker logs -f homeassistant
+
+# Pull the latest stable Home Assistant image and recreate the container
+docker compose -f ~/home-assistant/compose.yaml pull
+docker compose -f ~/home-assistant/compose.yaml up -d
+```
+
+### Starting, Stopping, and Restarting the Docker Daemon
+
+Docker itself runs as a `systemd` service on Linux and is enabled to start at boot (`systemctl enable --now docker`):
+
+```bash
+# Check Docker service status
+sudo systemctl status docker
+
+# Start the Docker daemon
+sudo systemctl start docker
+
+# Restart the Docker daemon (also restarts Home Assistant unless stopped)
+sudo systemctl restart docker
+
+# Stop the Docker daemon completely (stops all running containers)
+sudo systemctl stop docker docker.socket
+```
+
+### Activating HACS & Connecting a Zigbee Coordinator
+
+**Activating HACS:**
+1. HACS is automatically unpacked to `~/home-assistant/config/custom_components/hacs` during bootstrap.
+2. Open Home Assistant at `http://localhost:8123` and complete initial onboarding.
+3. Go to **Settings** → **Devices & Services** → **Add Integration** → search for **HACS** and follow the GitHub device activation prompt.
+
+**Connecting a Zigbee USB Dongle (ZHA):**
+Home Assistant is configured in `compose.yaml` with `privileged: true`, `network_mode: host`, and mounts `/dev:/dev` and `/run/udev:/run/udev:ro`. This allows USB serial dongles (such as Sonoff Zigbee 3.0 USB Dongle Plus or Home Assistant SkyConnect) to be hotplugged without Docker failing to start if the dongle is unplugged.
+1. Plug your USB dongle into the Linux host (using a USB 2.0 extension cable is recommended to avoid 2.4 GHz USB 3.0 interference).
+2. The bootstrap script automatically adds `$USER` to the `dialout` and `tty` groups and disables `ModemManager` so it cannot lock serial ports.
+3. In Home Assistant (`http://<host-ip>:8123`), go to **Settings** → **Devices & Services** → **Add Integration** → **Zigbee Home Automation (ZHA)**.
+4. Select the detected serial port (e.g., `/dev/serial/by-id/usb-ITead_Sonoff_Zigbee_3.0_USB_Dongle_Plus...`) and follow the setup wizard.
+
+---
+
 ## Installed Tools
 
 ### macOS — Homebrew Packages
 
 **Shell & prompt**
-- `zsh`, `starship`, `thefuck`, `zoxide`
+- `zsh`, `starship`, `thefuck`, `zoxide`, `direnv`
 
 **Shell history**
 - `fzf`, `navi`
@@ -564,11 +689,13 @@ The Starship prompt (`~/.config/starship/starship.toml`) shows:
 ### Linux — Native Packages
 
 **Arch** (via `pacman` + install scripts):
-`zsh`, `starship`, `eza`, `bat`, `fzf`, `fd`, `ripgrep`, `zoxide`, `git`, `neovim`, `lazygit`, `github-cli`, `jq`, `tmux`, `age`, `gnupg`, `curl`, `wget`, `rsync`, `tree`, `btop`, `fastfetch`, `chezmoi`, `just`, `sops`, then `fnm`, `oh-my-zsh`, `zsh-autosuggestions`, `zsh-syntax-highlighting` via install scripts
+- `pacman`: `zsh`, `starship`, `eza`, `bat`, `fzf`, `fd`, `ripgrep`, `zoxide`, `direnv`, `git`, `neovim`, `lazygit`, `github-cli`, `jq`, `tmux`, `age`, `gnupg`, `curl`, `wget`, `rsync`, `tree`, `btop`, `fastfetch`, `chezmoi`, `just`, `sops`, `tlp`, `ghostty`, `keyd`, `docker`, `docker-compose`
+- Install scripts: `fnm`, `oh-my-zsh`, `zsh-autosuggestions`, `zsh-syntax-highlighting`
 
-**Debian/Ubuntu** (via `apt` + install scripts):
-- `apt`: `zsh`, `eza`, `bat`, `fd-find`, `ripgrep`, `git`, `neovim`, `jq`, `tmux`, `age`, `gnupg`, `curl`, `wget`, `rsync`, `tree`, `btop`
-- Install scripts: `gh` (official apt repo), `fzf` (GitHub releases — apt version too old for `fzf --zsh`), `starship`, `zoxide`, `lazygit`, `fastfetch`, `chezmoi`, `just`, `sops`, `fnm`, `oh-my-zsh`, `zsh-autosuggestions`, `zsh-syntax-highlighting`
+**Debian/Ubuntu** (via `apt`, official repos/PPAs, and install scripts):
+- `apt`: `zsh`, `eza`, `bat`, `fd-find`, `ripgrep`, `direnv`, `git`, `neovim`, `jq`, `tmux`, `age`, `gnupg`, `curl`, `wget`, `rsync`, `tree`, `btop`, `python3`, `python3-pip`, `python3-selenium`, `python3-venv`, `fail2ban`, `gnome-tweaks`, `silversearcher-ag`, `tlp`, `keyd`, `xz-utils`, `make`, `unzip`, `openssh-server`, `chromium-chromedriver`, `software-properties-common`
+- Official APT repos & PPAs: `gh` (GitHub CLI APT repo), `firefox` (Mozilla APT repo — native `.deb` replacing Snap), `google-chrome-stable` (Google APT repo), `docker-ce` & `docker-compose-plugin` (Docker APT repo), `fastfetch` (`ppa:zhangsongcui3371/fastfetch`), `ghostty` (`ppa:mkick/ghostty`)
+- Install scripts / GitHub releases: `fzf` (GitHub releases — `apt` version is too old for `fzf --zsh`), `starship`, `zoxide`, `lazygit`, `chezmoi`, `just`, `sops`, `fnm`, `oh-my-zsh`, `zsh-autosuggestions`, `zsh-syntax-highlighting`
 
 ---
 
@@ -607,7 +734,7 @@ dot_config/some-tool/
 
 **Error:** `chezmoi: decrypt: ...`
 
-**Cause:** The age key at `~/.config/chezmoi/key.txt` is missing or wrong.
+**Cause:** The age key at `~/.config/chezmoi/key.txt` is wrong or corrupted (note: if `key.txt` is completely absent, `.chezmoiignore` skips encrypted files automatically).
 
 **Solution:**
 1. Retrieve the age private key from 1Password
@@ -623,7 +750,7 @@ dot_config/some-tool/
 
 **Cause:** `~/.config/chezmoi/chezmoi.toml` is missing or incomplete.
 
-**Solution:** Answer all prompts once — chezmoi saves them to `chezmoi.toml`. If the file was deleted, re-run `chezmoi init --apply boranuzun` or create it manually:
+**Solution:** Answer all prompts once — chezmoi saves them to `chezmoi.toml`. If the file was deleted, re-run `chezmoi init --apply larham/linux-dotfiles` or create it manually:
 
 ```toml
 # ~/.config/chezmoi/chezmoi.toml
@@ -640,6 +767,35 @@ encryption = "age"
   recipient = "age16mv7ycglyrn68pnrfv6r2pf72swjffn20sdehfdha7l5sqlr3s2qa2mlsl"
 ```
 
+### Docker Permission Denied on Linux
+
+**Error:** `permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock`
+
+**Cause:** Your user was added to the `docker` group during bootstrap, but the current login session has not picked up the new group membership yet.
+
+**Solution:** Log out and log back in, or activate the group in your current shell:
+
+```bash
+newgrp docker
+```
+
+### Home Assistant Container Not Starting or Port 8123 Unreachable
+
+**Solution:**
+1. Check whether the Docker daemon and `homeassistant` container are running:
+   ```bash
+   sudo systemctl status docker
+   docker compose -f ~/home-assistant/compose.yaml ps -a
+   ```
+2. Inspect the container logs for configuration errors:
+   ```bash
+   docker compose -f ~/home-assistant/compose.yaml logs --tail=100
+   ```
+3. Restart the container after fixing any issues in `~/home-assistant/config/configuration.yaml`:
+   ```bash
+   docker compose -f ~/home-assistant/compose.yaml restart
+   ```
+
 ### Packages Not Installing (macOS)
 
 **Cause:** `run_once_before_20` script already ran and chezmoi won't re-run it.
@@ -652,12 +808,13 @@ brew bundle --file="$HOME/.local/share/chezmoi/Brewfile"
 
 ### Packages Not Installing (Linux)
 
-**Cause:** Same — script already ran.
+**Cause:** Same — `run_once_` script already ran.
 
-**Solution:** Re-run the relevant install commands manually. For example, on Debian/Ubuntu:
+**Solution:** Reset the script state and re-apply, or run the install commands manually:
 
 ```bash
-sudo apt-get update -y && sudo apt-get install -y zsh git neovim jq tmux ...
+chezmoi state delete-bucket --bucket=scriptState
+chezmoi apply
 ```
 
 ### `chezmoi diff` Shows Unexpected Changes
@@ -708,18 +865,6 @@ Then reload: `source ~/.zshrc`
 
 3. If you want to disable signing, re-init with an empty GPG key ID or edit `~/.config/chezmoi/chezmoi.toml` and set `gpgKeyId = ""`, then run `chezmoi apply`.
 
-### SSH Keys Not Available
-
-SSH private keys are stored in 1Password and served via the 1Password SSH agent. The `~/.ssh/config` (decrypted from the age-encrypted source) already configures:
-
-```
-IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
-```
-
-Ensure:
-1. 1Password is installed and running
-2. SSH agent is enabled in 1Password → Settings → Developer → SSH Agent
-
 ### Default Shell Not Set to Zsh (Linux)
 
 The bootstrap script runs `chsh -s $(which zsh)` automatically. If it didn't take effect:
@@ -733,17 +878,6 @@ chsh -s /usr/bin/zsh
 
 # Log out and back in for the change to apply
 ```
-
-### Home Assistant & Zigbee Coordinator USB Pass-Through (Linux)
-
-Home Assistant runs in Docker at `~/home-assistant/` (`compose.yaml`). It is configured with `privileged: true`, host networking, and mounts `/dev:/dev` and `/run/udev:/run/udev:ro`. This enables hotplugging and pass-through of USB serial dongles (such as Sonoff Zigbee 3.0 USB Dongle Plus or Home Assistant SkyConnect) without Docker failing to start if the dongle is unplugged.
-
-**Connecting a Zigbee Coordinator:**
-1. Plug your USB dongle into the Linux host (using a USB 2.0 extension cable is recommended to avoid 2.4 GHz USB 3.0 interference).
-2. The user is added to `dialout` and `tty` groups automatically, and `ModemManager` is disabled to prevent serial port lockouts.
-3. Open Home Assistant at `http://<ubuntu-ip>:8123`.
-4. Go to **Settings** → **Devices & Services** → **Add Integration** → search for **Zigbee Home Automation (ZHA)**.
-5. Home Assistant will detect the serial port (e.g. `/dev/serial/by-id/usb-ITead_Sonoff_Zigbee_3.0_USB_Dongle_Plus...`). Follow the wizard to complete network initialization.
 
 ---
 
