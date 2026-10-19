@@ -24,6 +24,39 @@ if command -v gsettings >/dev/null 2>&1; then
 
   gsettings set org.gnome.shell.keybindings toggle-overview "['<Super>space', '<Control>space', '<Super>s']" 2>/dev/null || true
   dconf write /org/gnome/shell/keybindings/toggle-overview "['<Super>space', '<Control>space', '<Super>s']" 2>/dev/null || true
+
+  echo "Configuring Ubuntu Tiling Assistant with ShiftIt hotkeys (Ctrl+Alt+Cmd + Arrows / M)..."
+  if command -v gnome-extensions >/dev/null 2>&1; then
+    gnome-extensions enable tiling-assistant@ubuntu.com 2>/dev/null || true
+  fi
+  if gsettings list-schemas 2>/dev/null | grep -qx "org.gnome.shell.extensions.tiling-assistant"; then
+    # Disable the modal window-picker popup when tiling so it behaves like ShiftIt
+    gsettings set org.gnome.shell.extensions.tiling-assistant enable-tiling-popup false 2>/dev/null || true
+    # Halves: Ctrl+Alt+Cmd + Left / Right / Up / Down
+    gsettings set org.gnome.shell.extensions.tiling-assistant tile-left-half "['<Control><Alt><Super>Left', '<Super>Left', '<Super>KP_4']" 2>/dev/null || true
+    gsettings set org.gnome.shell.extensions.tiling-assistant tile-right-half "['<Control><Alt><Super>Right', '<Super>Right', '<Super>KP_6']" 2>/dev/null || true
+    gsettings set org.gnome.shell.extensions.tiling-assistant tile-top-half "['<Control><Alt><Super>Up', '<Super>KP_8']" 2>/dev/null || true
+    gsettings set org.gnome.shell.extensions.tiling-assistant tile-bottom-half "['<Control><Alt><Super>Down', '<Super>KP_2']" 2>/dev/null || true
+    # Maximize to full size: Ctrl+Alt+Cmd + M
+    gsettings set org.gnome.shell.extensions.tiling-assistant tile-maximize "['<Control><Alt><Super>m', '<Super>Up', '<Super>KP_5']" 2>/dev/null || true
+    # Quarters & Center (ShiftIt 1/2/3/4 and C)
+    gsettings set org.gnome.shell.extensions.tiling-assistant tile-topleft-quarter "['<Control><Alt><Super>1', '<Super>KP_7']" 2>/dev/null || true
+    gsettings set org.gnome.shell.extensions.tiling-assistant tile-topright-quarter "['<Control><Alt><Super>2', '<Super>KP_9']" 2>/dev/null || true
+    gsettings set org.gnome.shell.extensions.tiling-assistant tile-bottomleft-quarter "['<Control><Alt><Super>3', '<Super>KP_1']" 2>/dev/null || true
+    gsettings set org.gnome.shell.extensions.tiling-assistant tile-bottomright-quarter "['<Control><Alt><Super>4', '<Super>KP_3']" 2>/dev/null || true
+    gsettings set org.gnome.shell.extensions.tiling-assistant center-window "['<Control><Alt><Super>c']" 2>/dev/null || true
+  fi
+  dconf write /org/gnome/shell/extensions/tiling-assistant/enable-tiling-popup "false" 2>/dev/null || true
+  dconf write /org/gnome/shell/extensions/tiling-assistant/tile-left-half "['<Control><Alt><Super>Left', '<Super>Left', '<Super>KP_4']" 2>/dev/null || true
+  dconf write /org/gnome/shell/extensions/tiling-assistant/tile-right-half "['<Control><Alt><Super>Right', '<Super>Right', '<Super>KP_6']" 2>/dev/null || true
+  dconf write /org/gnome/shell/extensions/tiling-assistant/tile-top-half "['<Control><Alt><Super>Up', '<Super>KP_8']" 2>/dev/null || true
+  dconf write /org/gnome/shell/extensions/tiling-assistant/tile-bottom-half "['<Control><Alt><Super>Down', '<Super>KP_2']" 2>/dev/null || true
+  dconf write /org/gnome/shell/extensions/tiling-assistant/tile-maximize "['<Control><Alt><Super>m', '<Super>Up', '<Super>KP_5']" 2>/dev/null || true
+  dconf write /org/gnome/shell/extensions/tiling-assistant/tile-topleft-quarter "['<Control><Alt><Super>1', '<Super>KP_7']" 2>/dev/null || true
+  dconf write /org/gnome/shell/extensions/tiling-assistant/tile-topright-quarter "['<Control><Alt><Super>2', '<Super>KP_9']" 2>/dev/null || true
+  dconf write /org/gnome/shell/extensions/tiling-assistant/tile-bottomleft-quarter "['<Control><Alt><Super>3', '<Super>KP_1']" 2>/dev/null || true
+  dconf write /org/gnome/shell/extensions/tiling-assistant/tile-bottomright-quarter "['<Control><Alt><Super>4', '<Super>KP_3']" 2>/dev/null || true
+  dconf write /org/gnome/shell/extensions/tiling-assistant/center-window "['<Control><Alt><Super>c']" 2>/dev/null || true
 fi
 
 # 2. Kernel-level key mapping via keyd (guarantees Cmd+C/Cmd+V across ALL apps & Wayland)
